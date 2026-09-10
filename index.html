@@ -675,13 +675,20 @@ function App(){
   function rmCert(pid,i){updEq(e=>({...e,profs:e.profs.map(p=>p.id===pid?{...p,dossie:{...(p.dossie||{}),certs:((p.dossie||{}).certs||[]).filter((_,j)=>j!==i)}}:p)}));}
   function carregarFeriados(){const lista=feriadosNacionais(ano,ferOpt);updEq(e=>{const hm={...(e.holidayMap||{})};lista.forEach(([m,d])=>{const k=ano+"-"+m;const arr=(hm[k]||[]).slice();if(!arr.includes(d))arr.push(d);hm[k]=arr.sort((x,y)=>x-y);});return {...e,holidayMap:hm};});}
   function perfilEscala(tipo){updEq(e=>{
-    const fEnf=e.funcoes.find(f=>/enferm/i.test(f.nome)&&!/t[ée]cn|aux/i.test(f.nome));
-    const fTec=e.funcoes.find(f=>/t[ée]cn|aux/i.test(f.nome));
+    let funcoes=e.funcoes.slice();
+    const acha=(re,not)=>funcoes.find(f=>re.test(f.nome)&&(!not||!not.test(f.nome)));
+    let fEnf=acha(/enferm/i,/t[ée]cn|aux/i), fTec=acha(/t[ée]cn|aux/i);
+    // garante a função necessária existir
+    if((tipo==="enf"||tipo==="misto")&&!fEnf){fEnf={id:uid(),nome:"Enfermeiro"};funcoes=[...funcoes,fEnf];}
+    if((tipo==="tec"||tipo==="misto")&&!fTec){fTec={id:uid(),nome:"Técnico"};funcoes=[...funcoes,fTec];}
     const c=JSON.parse(JSON.stringify(e.cover||{semana:{},fds:{}}));
-    e.turnos.filter(t=>t.auto).forEach(t=>["semana","fds"].forEach(dt=>{c[dt]=c[dt]||{};c[dt][t.code]=c[dt][t.code]||{};
-      if(tipo==="enf"){if(fTec)c[dt][t.code][fTec.id]=0;}
-      if(tipo==="tec"){if(fEnf)c[dt][t.code][fEnf.id]=0;}}));
-    return {...e,perfil:tipo,cover:c};});}
+    const setCov=(fid,semSD,semSN,fdsSD,fdsSN)=>{e.turnos.filter(t=>t.auto).forEach(t=>["semana","fds"].forEach(dt=>{c[dt]=c[dt]||{};c[dt][t.code]=c[dt][t.code]||{};}));
+      if(!fid)return;const put=(dt,tc,v)=>{c[dt]=c[dt]||{};c[dt][tc]=c[dt][tc]||{};c[dt][tc][fid]=v;};
+      put("semana","SD",semSD);put("semana","SN",semSN);put("fds","SD",fdsSD);put("fds","SN",fdsSN);};
+    if(tipo==="enf"){setCov(fEnf&&fEnf.id,1,1,1,1);setCov(fTec&&fTec.id,0,0,0,0);}
+    if(tipo==="tec"){setCov(fTec&&fTec.id,1,1,1,1);setCov(fEnf&&fEnf.id,0,0,0,0);}
+    if(tipo==="misto"){setCov(fEnf&&fEnf.id,1,1,1,1);setCov(fTec&&fTec.id,2,2,1,1);}
+    return {...e,perfil:tipo,funcoes,cover:c};});}
   function updDim(k,v){updEq(e=>({...e,dim:{...(e.dim||{}),[k]:v}}));}
   function aplicarDimensionamento(){const r=dimensionar(eq.dim||{});const fEnf=eq.funcoes.find(f=>/enferm/i.test(f.nome)&&!/t[ée]cn|aux/i.test(f.nome)),fTec=eq.funcoes.find(f=>/t[ée]cn|aux/i.test(f.nome));
     if(!fEnf&&!fTec){alert("Não encontrei funções 'Enfermeiro' e 'Técnico' nesta equipe.");return;}
