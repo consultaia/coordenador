@@ -644,6 +644,9 @@ function App(){
     if(rows.length)sb.from("setores").upsert(rows,{onConflict:"codigo"}).then(()=>{});},[user,S.equipes.map(e=>e.id+e.codigo+e.nome).join("|")]);
   // garante código em equipes antigas
   useEffect(()=>{if(S.equipes.some(e=>!e.codigo))upd(s=>({...s,equipes:s.equipes.map(e=>e.codigo?e:{...e,codigo:genCodigo(e.nome)})}));},[S.equipes.length]);
+  // regenera códigos de setor antigos que tenham caracteres ambíguos (O,0,I,L,1)
+  useEffect(()=>{if(S.equipes.some(e=>/[O0IL1]/.test(e.codigo||"")))
+    upd(s=>({...s,equipes:s.equipes.map(e=>/[O0IL1]/.test(e.codigo||"")?{...e,codigo:genCodigo(e.nome)}:e)}));},[S.equipes.length]);
   // garante o turno PL (24h) em setores criados antes deste padrão
   useEffect(()=>{if(S.equipes.some(e=>!(e.turnos||[]).some(t=>t.code==="PL")))
     upd(s=>({...s,equipes:s.equipes.map(e=>(e.turnos||[]).some(t=>t.code==="PL")?e:{...e,turnos:[...(e.turnos||[]),{code:"PL",nome:"Plantão 24h",horas:24,periodo:"dia",auto:false}]})}));},[S.equipes.length]);
