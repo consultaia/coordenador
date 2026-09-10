@@ -628,6 +628,9 @@ function App(){
     if(rows.length)sb.from("setores").upsert(rows,{onConflict:"codigo"}).then(()=>{});},[user,S.equipes.map(e=>e.id+e.codigo+e.nome).join("|")]);
   // garante código em equipes antigas
   useEffect(()=>{if(S.equipes.some(e=>!e.codigo))upd(s=>({...s,equipes:s.equipes.map(e=>e.codigo?e:{...e,codigo:genCodigo(e.nome)})}));},[S.equipes.length]);
+  // garante o turno PL (24h) em setores criados antes deste padrão
+  useEffect(()=>{if(S.equipes.some(e=>!(e.turnos||[]).some(t=>t.code==="PL")))
+    upd(s=>({...s,equipes:s.equipes.map(e=>(e.turnos||[]).some(t=>t.code==="PL")?e:{...e,turnos:[...(e.turnos||[]),{code:"PL",nome:"Plantão 24h",horas:24,periodo:"dia",auto:false}]})}));},[S.equipes.length]);
   useEffect(()=>{saveLocal(S);if(cloudLoaded.current)persistCloud(user,S);},[S,user]);
   async function entrar(email,senha){if(!sb)return;setAuthErro("");setAuthBusy(true);const {error}=await sb.auth.signInWithPassword({email,password:senha});setAuthBusy(false);if(error)setAuthErro(error.message==="Invalid login credentials"?"E-mail ou senha incorretos.":error.message);}
   async function criarConta(email,senha){if(!sb)return;setAuthErro("");setAuthInfo("");if(!senha||senha.length<6){setAuthErro("Senha com pelo menos 6 caracteres.");return;}setAuthBusy(true);
