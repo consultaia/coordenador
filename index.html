@@ -513,7 +513,7 @@ function FuncSelect({funcoes,value,onSelect,onCreate}){const [novo,setNovo]=useS
 function App(){
   const [S,setS]=useState(()=>loadLocal()||estadoInicial());
   const [user,setUser]=useState(null);const [authErro,setAuthErro]=useState("");const [authInfo,setAuthInfo]=useState("");const [authBusy,setAuthBusy]=useState(false);const [authPronto,setAuthPronto]=useState(!sb);
-  const [cloudSols,setCloudSols]=useState([]);const [verificando,setVerificando]=useState(false);
+  const [cloudSols,setCloudSols]=useState([]);const [verificando,setVerificando]=useState(false);const [recovery,setRecovery]=useState(false);const [novaSenha,setNovaSenha]=useState("");const [showAdmin,setShowAdmin]=useState(false);const [adminList,setAdminList]=useState(null);const [cort,setCort]=useState({email:"",n:1,meses:12,msg:""});
   const [showPlanos,setShowPlanos]=useState(false);const [newEq,setNewEq]=useState("");
   const [newProf,setNewProf]=useState("");const [holIn,setHolIn]=useState("");
   const [lv,setLv]=useState({id:"",tipo:"FE",a:1,b:1});
@@ -551,7 +551,9 @@ function App(){
 
   // ---------- nuvem (opcional) ----------
   useEffect(()=>{if(!sb)return;sb.auth.getSession().then(({data})=>{setUser(data.session?.user||null);setAuthPronto(true);});
-    const {data:sub}=sb.auth.onAuthStateChange((_e,s)=>{setUser(s?.user||null);if(!s){cloudLoaded.current=false;}});return()=>sub.subscription.unsubscribe();},[]);
+    const {data:sub}=sb.auth.onAuthStateChange((ev,s)=>{setUser(s?.user||null);if(ev==="PASSWORD_RECOVERY")setRecovery(true);if(!s){cloudLoaded.current=false;}});
+    if((location.hash||"").includes("type=recovery"))setRecovery(true);
+    return()=>sub.subscription.unsubscribe();},[]);
   useEffect(()=>{if(!sb||!user||cloudLoaded.current)return;(async()=>{
     const [e,a]=await Promise.all([sb.from("estados").select("dados").eq("user_id",user.id).maybeSingle(),
       sb.from("assinaturas").select("limite_equipes,status,vigente_ate").eq("user_id",user.id).order("atualizado_em",{ascending:false}).limit(1).maybeSingle()]);
@@ -578,6 +580,11 @@ function App(){
     if(error){setAuthErro(error.message);return;}if(!data.session)setAuthInfo("Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.");}
   async function resetSenha(email){if(!sb||!email)return;setAuthBusy(true);const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href.split("#")[0]});setAuthBusy(false);setAuthErro(error?error.message:"");if(!error)setAuthInfo("Enviamos um link para redefinir a senha.");}
   async function sairConta(){if(!sb)return;await sb.auth.signOut();cloudLoaded.current=false;setUser(null);}
+  async function salvarNovaSenha(){if(novaSenha.length<6){setAuthErro("Senha com pelo menos 6 caracteres.");return;}setAuthBusy(true);
+    const {error}=await sb.auth.updateUser({password:novaSenha});setAuthBusy(false);
+    if(error){setAuthErro(error.message);return;}setRecovery(false);setNovaSenha("");setAuthInfo("");
+    try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}
+    alert("Senha definida! Guarde-a: é ela que você usa para entrar em qualquer aparelho.");}
 
   // ---------- helpers de estado ----------
   const upd=fn=>setS(s=>fn({...s}));
@@ -641,6 +648,14 @@ function App(){
   async function portalLogin(pid,pin,setErro){const p=eq.profs.find(x=>x.id===pid);const hh=(p&&p.dossie||{}).pinHash;if(!hh){setErro("Este profissional ainda não tem PIN. Peça ao coordenador.");return;}
     const h=await hashPin(pid,pin);if(h!==hh){setErro("PIN incorreto.");return;}setErro("");setSessao({eqId:eq.id,profId:pid});}
   async function sairPortal(){if(S.org.coordPinHash){const v=prompt("PIN do coordenador:");if(v==null)return;const h=await hashPin("coord",v);if(h!==S.org.coordPinHash){alert("PIN incorreto.");return;}}setSessao(null);setModo("coord");}
+  const ADMIN_EMAILS=["janan.almeida@gmail.com"]; // e-mails com painel de cortesia (mesma lista do Worker)
+  const ehAdmin=!!(user&&ADMIN_EMAILS.map(x=>x.toLowerCase()).includes((user.email||"").toLowerCase()));
+  async function liberarCortesia(){if(!sb||!user)return;setCort(c=>({...c,msg:"Liberando…"}));const {data}=await sb.auth.getSession();const tok=data.session?.access_token;
+    try{const r=await fetch(WORKER_URL+"/admin/cortesia",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+tok},body:JSON.stringify({email:cort.email,n_escalas:cort.n,meses:cort.meses})});
+      const j=await r.json();setCort(c=>({...c,msg:j.ok?("✓ "+j.email+" liberado até "+new Date(j.liberado_ate).toLocaleDateString("pt-BR")+" ("+j.escalas+" escala(s))"):("✗ "+(j.error||"erro"))}));if(j.ok)carregarAdminLista();}
+    catch(e){setCort(c=>({...c,msg:"✗ erro de conexão"}));}}
+  async function carregarAdminLista(){if(!sb||!user)return;const {data}=await sb.auth.getSession();const tok=data.session?.access_token;
+    try{const r=await fetch(WORKER_URL+"/admin/lista",{headers:{Authorization:"Bearer "+tok}});const j=await r.json();if(j.ok)setAdminList(j.assinaturas);}catch(e){}}
   const online=!!(sb&&user);
   const solsDe=(eqId,y)=>online?cloudSols.filter(x=>x.equipe_id===eqId&&(y==null||x.ym===y)):(y==null?Object.values((S.equipes.find(e=>e.id===eqId)||{}).solicitacoes||{}).flat():(((S.equipes.find(e=>e.id===eqId)||{}).solicitacoes||{})[y]||[]));
   function solicitarTroca(de,diaDe,para,diaPara){updEq(e=>{const so={...(e.solicitacoes||{})};so[ym]=[...(so[ym]||[]),{id:uid(),de,para,diaDe,diaPara,status:"aguardando_colega",criadoEm:new Date().toLocaleDateString("pt-BR")}];return {...e,solicitacoes:so};});}
@@ -787,6 +802,11 @@ function App(){
   const diasDescobertos=eq.profs.length?days.filter(d=>autoTurnos.some(t=>eq.funcoes.some(f=>((coverage[d][t.code]||{})[f.id]||0)<req(d,t.code,f.id)))).length:0;
   const NAV=[["panorama","🏠 Panorama",0],["escala","📅 Escala",diasDescobertos],["trocas","🔁 Trocas",pendTrocas],["equipe","👥 Equipe",0],["setor","⚙️ Setor",0],["docs","📄 Documentos",vencimentos.length],["indic","📊 Indicadores",0]];
   if(sb&&!authPronto)return <div className="land"><div className="empty">Carregando…</div></div>;
+  if(sb&&recovery)return <div className="land"><div className="panel auth" style={{maxWidth:460,margin:"40px auto"}}><h2>Definir nova senha</h2>
+    <div className="hint" style={{marginTop:0}}>Você entrou pelo link do e-mail. Escolha uma senha e <b>anote</b> — é ela que você usará para entrar depois, em qualquer celular ou computador.</div>
+    <input type="password" placeholder="nova senha (mín. 6)" value={novaSenha} onChange={e=>setNovaSenha(e.target.value)} onKeyDown={e=>e.key==="Enter"&&salvarNovaSenha()} style={{marginTop:8}}/>
+    {authErro&&<div className="hint" style={{color:"var(--bad)"}}>{authErro}</div>}
+    <button className="btn primary" disabled={authBusy} onClick={salvarNovaSenha}>Salvar senha</button></div></div>;
   if(sb&&modo==="portal_online")return <PortalOnline onVoltar={()=>setModo("coord")}/>;
   if(sb&&!user)return <Landing onEntrar={entrar} onCriar={criarConta} onReset={resetSenha} onPortal={()=>setModo("portal_online")} erro={authErro} info={authInfo} busy={authBusy}/>;
   return (
@@ -795,6 +815,20 @@ function App(){
       {modo==="portal"&&<PortalProfissional S={S} eq={eq} setEq={id=>upd(s=>({...s,ativa:id}))} sessao={sessao} onLogin={portalLogin} onLogout={()=>setSessao(null)} onSair={sairPortal}
         sched={sched} turnoMap={turnoMap} dim={dim} ano={ano} mes={mes} hol={hol} onSolicitar={solicitarTroca} onResponder={responderTroca} onLido={marcarLido}/>}
       {modo!=="portal"&&<>
+      {showAdmin&&<div className="overlay noprint" onClick={()=>setShowAdmin(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
+        <h2 style={{fontFamily:"'Space Grotesk'",margin:"0 0 6px"}}>🎁 Cortesias (admin)</h2>
+        <p style={{color:"var(--muted)",fontSize:13,margin:"0 0 12px"}}>A pessoa cria a conta normalmente (e-mail + senha) na landing. Depois você libera aqui pelo e-mail dela.</p>
+        <div className="group"><div className="row">
+          <div className="field" style={{flex:1,minWidth:200}}><label>E-mail do coordenador</label><input style={{width:"100%"}} value={cort.email} onChange={e=>setCort({...cort,email:e.target.value})} placeholder="pessoa@exemplo.com"/></div>
+          <div className="field"><label>Escalas</label><select value={cort.n} onChange={e=>setCort({...cort,n:+e.target.value})}>{PLANOS.map(p=><option key={p.n} value={p.n}>{p.n}</option>)}</select></div>
+          <div className="field"><label>Duração</label><select value={cort.meses} onChange={e=>setCort({...cort,meses:+e.target.value})}><option value={1}>1 mês</option><option value={6}>6 meses</option><option value={12}>1 ano</option><option value={120}>10 anos</option></select></div>
+          <BtnCap cap="ativa na hora"><button className="btn primary" onClick={liberarCortesia} disabled={!cort.email.trim()}>Liberar</button></BtnCap></div>
+          {cort.msg&&<div className="hint" style={{color:cort.msg.startsWith("✓")?"var(--ok)":cort.msg.startsWith("✗")?"var(--bad)":"var(--muted)"}}>{cort.msg}</div>}</div>
+        <h2 style={{fontFamily:"'Space Grotesk'",fontSize:13,margin:"14px 0 6px"}}>Assinaturas recentes</h2>
+        {!adminList?<div className="hint">carregando…</div>:<table className="tb"><thead><tr><th>Status</th><th>Escalas</th><th>Válida até</th><th>Atualizada</th></tr></thead><tbody>
+          {adminList.map((r,i)=><tr key={i}><td style={{color:r.status==="ativo"?"var(--ok)":r.status==="trial"?"var(--warn)":"var(--bad)",fontWeight:600}}>{r.status}</td><td>{r.limite_equipes}</td><td>{r.vigente_ate?new Date(r.vigente_ate).toLocaleDateString("pt-BR"):"—"}</td><td className="hint" style={{marginTop:0}}>{r.atualizado_em?new Date(r.atualizado_em).toLocaleDateString("pt-BR"):""}</td></tr>)}</tbody></table>}
+        <div className="hint">Mostra e-mails? Não, por privacidade — a lista usa o e-mail só na hora de liberar. Para ver por e-mail, use o SQL de cortesia.</div>
+        <div style={{textAlign:"right",marginTop:12}}><button className="btn" onClick={()=>setShowAdmin(false)}>Fechar</button></div></div></div>}
       {avisoVenc&&<div className="banner noprint" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>⏰ {S.plano.status==="trial"?"Seu teste grátis":"Sua assinatura"} vence em <b>{venceEm} dia{venceEm!==1?"s":""}</b> ({new Date(S.plano.vigenteAte).toLocaleDateString("pt-BR")}). Renove por Pix para não perder o acesso — seus dados continuam guardados.<span style={{flex:1}}></span><button className="btn primary sm" onClick={()=>setShowPlanos(true)}>Renovar agora</button></div>}
       {!liberado&&<div className="lock noprint"><div className="modal" style={{maxWidth:640}}>
         <h2 style={{fontFamily:"'Space Grotesk'",margin:"0 0 6px"}}>Assinatura vencida</h2>
@@ -814,6 +848,7 @@ function App(){
         <div className="noprint">{badge}</div>
         <div className="actions noprint">
           <BtnCap cap={online?"o que a equipe vê no celular":"tela do profissional (PIN)"}><button className="btn" onClick={()=>setModo(online?"portal_online":"portal")}>👤 Portal</button></BtnCap>
+          {ehAdmin&&<BtnCap cap="liberar cortesias"><button className="btn" onClick={()=>{setShowAdmin(true);carregarAdminLista();}}>🎁 Admin</button></BtnCap>}
           {online&&<BtnCap cap={user.email}><button className="btn ghost" onClick={sairConta}>Sair</button></BtnCap>}
           <BtnCap cap={S.org.coordPinHash?"PIN do coordenador ativo":"proteger volta do portal"}><button className="btn" onClick={definirPinCoord}>{S.org.coordPinHash?"🔒":"🔓"}</button></BtnCap>
           <BtnCap cap="assinatura e limites"><button className="btn" onClick={()=>setShowPlanos(true)}>Planos</button></BtnCap>
