@@ -66,7 +66,20 @@ button{font-family:inherit;cursor:pointer}input,select{font-family:inherit;font-
 .cap{font-size:10px;color:var(--muted);text-align:center;line-height:1.2;max-width:120px}.bcap{display:inline-flex;flex-direction:column;align-items:center;gap:3px}
 .banner{background:var(--warn-bg);color:var(--warn);border:1px solid #f3d9a4;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;margin-bottom:10px}
 .land{max-width:980px;margin:0 auto;padding:28px 18px}
-.hero{background:linear-gradient(135deg,var(--teal-d),var(--teal));color:#fff;border-radius:18px;padding:34px 30px;margin-bottom:18px}
+.hero{background:linear-gradient(135deg,var(--teal-d),var(--teal));color:#fff;border-radius:18px;padding:40px 34px;margin-bottom:18px;position:relative;overflow:hidden}
+.hero .cta{display:inline-flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.hero .cta button{border:none;border-radius:10px;padding:12px 20px;font-weight:700;font-size:15px;cursor:pointer}
+.hero .cta .p{background:#fff;color:var(--teal-d)}.hero .cta .g{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.5)}
+.bene{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:18px}
+.bene .c{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+.bene .c .ic{width:42px;height:42px;border-radius:11px;background:#f1f6f6;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px}
+.bene .c h3{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 6px}.bene .c p{font-size:13px;color:var(--muted);margin:0}
+.steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 18px}@media(max-width:680px){.steps3{grid-template-columns:1fr}}
+.steps3 .s{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}.steps3 .n{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--teal-d);font-size:22px}
+.ptable{width:100%;border-collapse:collapse;font-size:14px}.ptable td,.ptable th{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}.ptable th{font-size:11px;text-transform:uppercase;color:var(--muted)}
+.ptable .pr{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--teal-d)}
+.faq details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px}.faq summary{font-weight:600;cursor:pointer;font-size:14px}.faq p{font-size:13px;color:var(--muted);margin:8px 0 0}
+.foot{text-align:center;color:var(--muted);font-size:12px;padding:20px 0}
 .hero h1{font-family:'Space Grotesk',sans-serif;font-size:30px;margin:0 0 8px}.hero p{font-size:15px;opacity:.95;margin:0 0 4px;max-width:640px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:760px){.two{grid-template-columns:1fr}}
 .auth input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-size:15px;margin-bottom:8px}
@@ -183,7 +196,9 @@ const MENSAL=n=>+(14.90+5*(n-1)).toFixed(2);              // referência mensal 
 const PRECO=(n,per)=>+(MENSAL(n)*(per===12?10:5)).toFixed(2); // semestral = 5 mensalidades · anual = 10 (2 meses grátis)
 const PLANOS=Array.from({length:12},(_,i)=>({n:i+1,preco:MENSAL(i+1)}));
 const fmtR=v=>"R$ "+v.toFixed(2).replace(".",",");
-const genCodigo=(nome)=>{const base=(nome||"SET").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4)||"SET";const abc="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=abc[Math.floor(Math.random()*abc.length)];return base+"-"+r;};
+const AMBIG={"O":"P","0":"P","I":"K","1":"K","L":"K","5":"S","S":"S","B":"B","8":"H"}; // evita caracteres confundíveis (mantém S/B mas fixa O/0/I/1/L)
+const limpaCod=t=>t.toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/[O0IL1]/g,c=>({O:"P","0":"P",I:"K",L:"K","1":"K"}[c]));
+const genCodigo=(nome)=>{const base=(limpaCod(nome||"SET")).slice(0,4)||"SET";const abc="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=abc[Math.floor(Math.random()*abc.length)];return base+"-"+r;};
 const DEF_TURNOS=()=>[
   {code:"SD",nome:"Diurno",horas:12,periodo:"dia",auto:true},
   {code:"SN",nome:"Noturno",horas:12,periodo:"noite",auto:true},
@@ -417,9 +432,25 @@ function PainelTroca({eq,sched,turnoMap,dim,onTrocar,log}){const [A,setA]=useSta
 function Landing({onEntrar,onCriar,onReset,onPortal,erro,info,busy}){const [email,setEmail]=useState("");const [senha,setSenha]=useState("");const [n,setN]=useState(1);const [per,setPer]=useState(6);const [modo,setModo]=useState("entrar");
   return <div className="land">
     <div className="hero"><div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}><img src="icon-192.png" alt="" style={{width:44,height:44,borderRadius:10,background:"#fff"}} onError={e=>e.currentTarget.style.display="none"}/><span style={{fontFamily:"'Space Grotesk'",fontWeight:700,fontSize:20}}>Coordenador</span></div>
-      <h1>Escalas e gestão da equipe, no celular.</h1><p>Gere a escala do mês em segundos com cobertura, descanso e fins de semana equilibrados. Sua equipe vê a própria escala e pede trocas pelo celular — você só autoriza.</p><p style={{opacity:.85,fontSize:13}}>Dimensionamento COFEN · banco de horas · férias · documentos do conselho · indicadores para a diretoria.</p></div>
+      <h1>A escala do mês pronta em minutos — e sua equipe acompanha pelo celular.</h1>
+      <p>Feito para coordenadores de enfermagem. O sistema distribui os plantões respeitando carga horária, descanso, regime e fins de semana. A equipe vê a própria escala e pede troca pelo app; você só autoriza.</p>
+      <div className="cta"><button className="p" onClick={()=>document.getElementById("cta-conta")&&document.getElementById("cta-conta").scrollIntoView({behavior:"smooth"})}>Começar teste grátis (14 dias)</button><button className="g" onClick={onPortal}>Sou da equipe</button></div>
+    </div>
+    <div className="bene">
+      <div className="c"><div className="ic">⚡</div><h3>Escala automática e justa</h3><p>Cobertura por turno, folga pós-plantão e fins de semana/feriados equilibrados entre todos. Ajuste manual quando quiser.</p></div>
+      <div className="c"><div className="ic">📱</div><h3>Equipe no próprio celular</h3><p>Cada profissional entra com um PIN, vê a escala e solicita troca. O colega aceita, você autoriza — tudo registrado.</p></div>
+      <div className="c"><div className="ic">📊</div><h3>Dimensionamento COFEN 543</h3><p>Calcula o quadro ideal por nível de cuidado e gera slides prontos para levar à diretoria pedir pessoal.</p></div>
+      <div className="c"><div className="ic">🗂️</div><h3>Gestão além da escala</h3><p>Banco de horas, férias anuais, licenças, e alertas de vencimento de conselho, ASO e certificações.</p></div>
+      <div className="c"><div className="ic">🖨️</div><h3>Pronto para o mural</h3><p>Imprime em paisagem com cabeçalho e cores, exporta Excel e guarda a escala original e a com trocas.</p></div>
+      <div className="c"><div className="ic">☁️</div><h3>Tudo na nuvem</h3><p>Acesse de qualquer lugar, instale como app no iPhone e Android. Seus dados ficam salvos e seguros.</p></div>
+    </div>
+    <div className="steps3">
+      <div className="s"><div className="n">1</div><h3 style={{fontFamily:"'Space Grotesk'",fontSize:15,margin:"6px 0 4px"}}>Cadastre a equipe</h3><p style={{fontSize:13,color:"var(--muted)",margin:0}}>Nomes, função, carga horária e regime. Leva minutos.</p></div>
+      <div className="s"><div className="n">2</div><h3 style={{fontFamily:"'Space Grotesk'",fontSize:15,margin:"6px 0 4px"}}>Gere a escala</h3><p style={{fontSize:13,color:"var(--muted)",margin:0}}>Um clique. Revise, ajuste e publique.</p></div>
+      <div className="s"><div className="n">3</div><h3 style={{fontFamily:"'Space Grotesk'",fontSize:15,margin:"6px 0 4px"}}>Equipe acompanha</h3><p style={{fontSize:13,color:"var(--muted)",margin:0}}>Cada um vê seus plantões e pede troca pelo celular.</p></div>
+    </div>
     <div className="two">
-      <div className="panel"><h2>Contrate aqui</h2>
+      <div className="panel" id="cta-conta"><h2>Contrate aqui</h2>
         <div className="row" style={{marginBottom:10}}><div className="field"><label>Escalas (setores)</label><select value={n} onChange={e=>setN(+e.target.value)}>{PLANOS.map(p=><option key={p.n} value={p.n}>{p.n} escala{p.n>1?"s":""}</option>)}</select></div>
           <div className="field"><label>Período</label><div className="seg"><button className={per===6?"on":""} onClick={()=>setPer(6)}>Semestral</button><button className={per===12?"on":""} onClick={()=>setPer(12)}>Anual</button></div></div></div>
         <div className="price">{fmtR(PRECO(n,per))}</div><div className="hint" style={{marginTop:2}}>{per===12?"por ano · 2 meses grátis":"por semestre · 1 mês grátis"} · Pix · equivale a {fmtR(PRECO(n,per)/per)}/mês</div>
@@ -437,7 +468,20 @@ function Landing({onEntrar,onCriar,onReset,onPortal,erro,info,busy}){const [emai
           <button className="btn ghost" onClick={()=>setModo("reset")}>Esqueci a senha</button></div>
         <div style={{marginTop:16,borderTop:"1px solid var(--line)",paddingTop:12}}><div className="hint" style={{marginTop:0,marginBottom:6}}>É da equipe (técnico, enfermeiro…)? Entre com o código do setor e seu PIN.</div>
           <button className="btn" onClick={onPortal}>👤 Sou profissional da equipe</button></div></div></div>
-    <div className="hint" style={{textAlign:"center",marginTop:14}}>No celular: use "Adicionar à tela de início" (Safari: Compartilhar · Chrome: menu ⋮) para abrir como app.</div>
+    <div className="panel" style={{marginTop:18}}><h2>Planos — pague por Pix, semestral ou anual</h2>
+      <table className="ptable"><thead><tr><th>Escalas (setores)</th><th>Semestral</th><th>Anual (2 meses grátis)</th></tr></thead><tbody>
+        {[1,2,3,5].map(x=><tr key={x}><td>{x} escala{x>1?"s":""}</td><td className="pr">{fmtR(PRECO(x,6))}</td><td className="pr">{fmtR(PRECO(x,12))}</td></tr>)}
+      </tbody></table>
+      <div className="hint">De 1 a 12 escalas. Cada escala = 1 setor com escala mensal própria. Comece com 14 dias grátis; o pagamento é feito dentro da plataforma.</div></div>
+    <div className="panel faq"><h2>Perguntas frequentes</h2>
+      <details><summary>Preciso instalar algo?</summary><p>Não. Funciona no navegador do computador e do celular. No celular dá para "adicionar à tela de início" e usar como aplicativo.</p></details>
+      <details><summary>Como a equipe acessa?</summary><p>Você define um PIN de 4 dígitos para cada profissional e passa o código do setor. Eles entram pelo celular, veem a escala e pedem trocas — sem instalar nada.</p></details>
+      <details><summary>Serve para outras áreas além da enfermagem?</summary><p>Sim. Funções e turnos são livres: enfermeiro, técnico, fisioterapeuta, recepção, laboratório… você cria os que precisar.</p></details>
+      <details><summary>E se eu não renovar?</summary><p>Nada é perdido. A plataforma trava para edição, mas seus dados ficam guardados e voltam exatamente de onde pararam quando você pagar de novo.</p></details>
+      <details><summary>É seguro?</summary><p>Cada coordenador só enxerga os próprios dados. As senhas e os PINs ficam protegidos e os pagamentos são processados pelo Mercado Pago.</p></details>
+    </div>
+    <div className="hint" style={{textAlign:"center",marginTop:8}}>No celular: use "Adicionar à tela de início" (Safari: Compartilhar · Chrome: menu ⋮) para abrir como app.</div>
+    <div className="foot">Coordenador · uma ferramenta ConsultaIA · escalas e gestão de equipes de saúde</div>
   </div>;}
 
 function PortalOnline({onVoltar}){const [codigo,setCodigo]=useState(localStorage.getItem("coord_codigo")||"");const [setor,setSetor]=useState(null);const [prof,setProf]=useState("");const [pin,setPin]=useState("");
@@ -943,6 +987,7 @@ function App(){
       <div className="panel noprint" data-sec="equipe"><h2>Acesso da equipe pelo celular</h2>
         <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}><span>Código do setor <b>{eq.nome}</b>:</span><span className="codigo">{eq.codigo}</span>
           <button className="btn sm" onClick={()=>{navigator.clipboard&&navigator.clipboard.writeText(eq.codigo);}}>copiar</button>
+          <span className="hint" style={{marginTop:0}}>só letras e números, sem O, 0, I, L ou 1 — não há como confundir</span>
           <button className="btn ghost sm" onClick={()=>{if(confirm("Gerar um novo código? O antigo deixa de funcionar."))updEq(x=>({...x,codigo:genCodigo(x.nome)}));}}>gerar novo</button></div>
         <div className="hint">Cada profissional abre {online?location.origin+location.pathname:"o app"} no celular → "Sou profissional da equipe" → digita este código, escolhe o nome e entra com o PIN de 4 dígitos que você definiu no cadastro. Pode adicionar à tela de início como app.</div></div>
 
