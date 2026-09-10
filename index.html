@@ -236,8 +236,9 @@ const estadoInicial=()=>{const e=novaEquipe("Setor 1");const n=new Date();
 
 // ---------- persistência ----------
 const KEY="coordenador_v1";
-const loadLocal=()=>{try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null;}catch(e){return null;}};
-const saveLocal=s=>{try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}};
+const keyFor=uid=>KEY+(uid?":"+uid:"");           // espelho local SEPARADO por usuário — nunca vaza entre contas
+const loadLocal=(uid)=>{try{const r=localStorage.getItem(keyFor(uid));return r?JSON.parse(r):null;}catch(e){return null;}};
+const saveLocal=(s,uid)=>{try{localStorage.setItem(keyFor(uid),JSON.stringify(s));}catch(e){}};
 let _t=null;
 function persistCloud(user,s){if(!sb||!user)return;clearTimeout(_t);
   _t=setTimeout(()=>{const ts=new Date().toISOString();sb.from("estados").upsert({user_id:user.id,dados:{...s,_ts:ts},atualizado_em:ts}).then(()=>{});},900);}
@@ -595,7 +596,7 @@ function FuncSelect({funcoes,value,onSelect,onCreate}){const [novo,setNovo]=useS
     {funcoes.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}<option value="__outra__">＋ Outra função… (digitar)</option></select>;}
 
 function App(){
-  const [S,setS]=useState(()=>loadLocal()||estadoInicial());
+  const [S,setS]=useState(()=>sb?estadoInicial():(loadLocal(null)||estadoInicial()));
   const [user,setUser]=useState(null);const [authErro,setAuthErro]=useState("");const [authInfo,setAuthInfo]=useState("");const [authBusy,setAuthBusy]=useState(false);const [authPronto,setAuthPronto]=useState(!sb);
   const [cloudSols,setCloudSols]=useState([]);const [verificando,setVerificando]=useState(false);const [recovery,setRecovery]=useState(false);const [novaSenha,setNovaSenha]=useState("");const [showAdmin,setShowAdmin]=useState(false);const [adminList,setAdminList]=useState(null);const [cort,setCort]=useState({email:"",n:2,meses:12,msg:""});
   const [showPlanos,setShowPlanos]=useState(false);const [newEq,setNewEq]=useState("");
@@ -636,15 +637,17 @@ function App(){
 
   // ---------- nuvem (opcional) ----------
   useEffect(()=>{if(!sb)return;sb.auth.getSession().then(({data})=>{setUser(data.session?.user||null);setAuthPronto(true);});
-    const {data:sub}=sb.auth.onAuthStateChange((ev,s)=>{setUser(s?.user||null);if(ev==="PASSWORD_RECOVERY")setRecovery(true);if(!s){cloudLoaded.current=false;}});
+    const {data:sub}=sb.auth.onAuthStateChange((ev,s)=>{const novo=s?.user||null;setUser(prev=>{if(prev&&novo&&prev.id!==novo.id){cloudLoaded.current=false;setS(estadoInicial());}return novo;});if(ev==="PASSWORD_RECOVERY")setRecovery(true);if(!s){cloudLoaded.current=false;setS(estadoInicial());setCloudSols([]);}});
     if((location.hash||"").includes("type=recovery"))setRecovery(true);
     return()=>sub.subscription.unsubscribe();},[]);
   useEffect(()=>{if(!sb||!user||cloudLoaded.current)return;(async()=>{
     const [e,a]=await Promise.all([sb.from("estados").select("dados").eq("user_id",user.id).maybeSingle(),
       sb.from("assinaturas").select("limite_equipes,status,vigente_ate").eq("user_id",user.id).order("atualizado_em",{ascending:false}).limit(1).maybeSingle()]);
-    if(e.data&&e.data.dados){const merged=mergeEstados(loadLocal(),e.data.dados);setS(s=>({...merged,plano:s.plano}));}
+    const meuLocal=loadLocal(user.id);
+    if(e.data&&e.data.dados){const merged=mergeEstados(meuLocal,e.data.dados);setS(s=>({...merged,plano:s.plano}));}
+    else{const base=meuLocal||estadoInicial();setS(s=>({...base,plano:s.plano}));
+      const ts=new Date().toISOString();await sb.from("estados").upsert({user_id:user.id,dados:{...base,_ts:ts},atualizado_em:ts});}
     if(a.data)setS(s=>({...s,plano:{limite:a.data.limite_equipes||1,status:a.data.status||"expirado",vigenteAte:a.data.vigente_ate}}));
-    if(!e.data){const l=loadLocal();if(l&&(l.equipes||[]).some(eq=>Object.keys(eq.sched||{}).length))await sb.from("estados").upsert({user_id:user.id,dados:{...l,_ts:new Date().toISOString()},atualizado_em:new Date().toISOString()});}
     cloudLoaded.current=true;await carregarSols();})();},[user]);
   async function carregarSols(){if(!sb||!user)return;const {data}=await sb.from("solicitacoes").select("*").eq("user_id",user.id).order("criado_em",{ascending:false}).limit(500);
     if(data)setCloudSols(data.map(r=>({id:r.id,equipe_id:r.equipe_id,ym:r.ym,de:r.de,para:r.para,diaDe:r.dia_de,diaPara:r.dia_para,status:r.status,comentario:r.comentario||"",lidoPor:r.lido_por||[],criadoEm:r.criado_em?new Date(r.criado_em).toLocaleDateString("pt-BR"):"",aceitoEm:r.aceito_em?new Date(r.aceito_em).toLocaleDateString("pt-BR"):"",decididoEm:r.decidido_em?new Date(r.decidido_em).toLocaleDateString("pt-BR"):""})));}
@@ -665,7 +668,7 @@ function App(){
   // garante o turno PL (24h) em setores criados antes deste padrão
   useEffect(()=>{if(S.equipes.some(e=>!(e.turnos||[]).some(t=>t.code==="PL")))
     upd(s=>({...s,equipes:s.equipes.map(e=>(e.turnos||[]).some(t=>t.code==="PL")?e:{...e,turnos:[...(e.turnos||[]),{code:"PL",nome:"Plantão 24h",horas:24,periodo:"dia",auto:false}]})}));},[S.equipes.length]);
-  useEffect(()=>{saveLocal(S);if(cloudLoaded.current)persistCloud(user,S);},[S,user]);
+  useEffect(()=>{if(sb){if(user&&cloudLoaded.current){saveLocal(S,user.id);persistCloud(user,S);}}else saveLocal(S,null);},[S,user]);
   useEffect(()=>{if(!sb||!user)return;const h=()=>{clearTimeout(_t);try{const ts=new Date().toISOString();sb.from("estados").upsert({user_id:user.id,dados:{...S,_ts:ts},atualizado_em:ts}).then(()=>{});}catch(e){}};window.addEventListener("beforeunload",h);return()=>window.removeEventListener("beforeunload",h);},[S,user]);
   async function entrar(email,senha){if(!sb)return;setAuthErro("");setAuthBusy(true);const {error}=await sb.auth.signInWithPassword({email,password:senha});setAuthBusy(false);if(error)setAuthErro(error.message==="Invalid login credentials"?"E-mail ou senha incorretos.":error.message);}
   const [planoPre,setPlanoPre]=useState(null);
@@ -675,7 +678,7 @@ function App(){
     if(!data.session){setAuthInfo("Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.");return;}
     if(contr){setPlanoPre(contr);setTimeout(()=>setShowPlanos(true),600);}}
   async function resetSenha(email){if(!sb||!email)return;setAuthBusy(true);const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href.split("#")[0]});setAuthBusy(false);setAuthErro(error?error.message:"");if(!error)setAuthInfo("Enviamos um link para redefinir a senha.");}
-  async function sairConta(){if(!sb)return;await sb.auth.signOut();cloudLoaded.current=false;setUser(null);}
+  async function sairConta(){if(!sb)return;await sb.auth.signOut();cloudLoaded.current=false;setUser(null);setS(estadoInicial());setCloudSols([]);}
   async function salvarNovaSenha(){if(novaSenha.length<6){setAuthErro("Senha com pelo menos 6 caracteres.");return;}setAuthBusy(true);
     const {error}=await sb.auth.updateUser({password:novaSenha});setAuthBusy(false);
     if(error){setAuthErro(error.message);return;}setRecovery(false);setNovaSenha("");setAuthInfo("");
