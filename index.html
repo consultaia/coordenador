@@ -154,30 +154,37 @@ tfoot tr.sum td{background:#e9f1f1;color:var(--ink);font-size:12px}tfoot tr.sum 
 .modal{background:#fff;border-radius:16px;padding:22px;max-width:760px;width:100%;max-height:90vh;overflow:auto}
 .print-head{display:none}
 @media print{
-  @page{size:A4 landscape;margin:7mm}
+  @page{size:A4 landscape;margin:6mm}
   html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  body *{visibility:hidden!important}
-  .print-show,.print-show *{visibility:visible!important}
-  .print-head{position:absolute;left:0;top:0;width:100%;display:flex!important;align-items:center;gap:14px;margin:0}
-  .print-head img{height:44px;width:auto;max-width:120px;object-fit:contain}
-  .print-head .t1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:#000}
-  .print-head .t2{font-size:11px;color:#333}
-  .grid-scroll.print-show{position:absolute;left:0;top:52px;width:100%;overflow:visible!important;border:1px solid #999;border-radius:0;display:block!important}
-  .legend.print-show{display:flex!important}
-  .print-show .noprint,.print-show .bcap,.print-show .btn{display:none!important}
-  .sched{font-size:8px;width:100%;table-layout:fixed}
-  .sched th,.sched td{min-width:0!important;padding:0!important;border-color:#bbb;overflow:hidden}
-  .sched thead th{position:static!important;padding:2px 0!important;font-size:8px}
-  .sched th.dnum{min-width:0;font-size:8px}.sched th.dwd{font-size:7px}.sched th .fer{font-size:6px}
-  .print-show .cell-sel{display:none!important}
-  .print-show .cell-print{display:block!important;height:18px;line-height:18px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:8px;text-align:center}
-  .name-col{position:static!important;width:118px!important;padding:1px 4px!important;border-right:2px solid #999!important}
-  .nm-main{font-size:8.5px}.nm-tags{font-size:6.5px}
-  .tot-col{position:static!important;width:66px!important;border-left:2px solid #999!important}
-  .tot-wrap{padding:0 4px!important;height:18px!important}.tot-h{font-size:9px}.pill{font-size:7px;min-width:28px;padding:0 3px}
-  tfoot td{height:14px;font-size:7.5px}tfoot .cov-lbl{font-size:7.5px}tfoot .cov-lbl small{font-size:6.5px}
-  .chip{width:22px;height:12px;font-size:7px}
 }
+body.printing .noprint,body.printing .btn,body.printing .bcap{display:none!important}
+body.printing .wrap > *:not(.print-show){display:none!important}
+body.printing .wrap{max-width:none;padding:0;margin:0}
+body.printing .print-head{display:flex!important;align-items:center;gap:14px;margin:0 0 6px}
+body.printing .print-head img{height:42px;max-width:110px;object-fit:contain}
+body.printing .print-head .t1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:#000}
+body.printing .print-head .t2{font-size:10px;color:#333}
+body.printing .grid-scroll{overflow:visible!important;border:1px solid #999;border-radius:0;display:block!important}
+body.printing .legend{display:flex!important;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:9px}
+body.printing table.sched{font-size:8px;width:100%;table-layout:fixed;border-collapse:collapse}
+body.printing .sched tr{page-break-inside:avoid}
+body.printing .sched th,body.printing .sched td{min-width:0!important;padding:0!important;border:1px solid #bbb;overflow:hidden}
+body.printing .sched thead th{position:static!important;padding:2px 0!important;font-size:8px;background:#eee!important}
+body.printing .sched th.dnum{font-size:8px}body.printing .sched th.dwd{font-size:7px}
+body.printing .cell-sel{display:none!important}
+body.printing .cell-print{display:block!important;height:16px;line-height:16px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:8px;text-align:center}
+body.printing .name-col{position:static!important;width:112px!important;padding:1px 4px!important;border-right:2px solid #999!important}
+body.printing .nm-main{font-size:8px}body.printing .nm-tags{font-size:6px}
+body.printing .tot-col{position:static!important;width:60px!important;border-left:2px solid #999!important}
+body.printing .tot-wrap{padding:0 3px!important;height:16px!important}body.printing .tot-h{font-size:8px}body.printing .pill{font-size:6px;min-width:24px;padding:0 3px}
+body.printing tfoot td{height:13px;font-size:7px}body.printing tfoot .cov-lbl{font-size:7px}
+body.printing .chip{width:20px;height:11px;font-size:6px}
+body.printing .print-coren{display:table-cell!important}
+body.printing .p-obs{display:block!important;margin-top:8px;font-size:9px;border:1px solid #999;padding:6px 8px;white-space:pre-wrap;min-height:38px}
+body.printing .p-assina{display:flex!important;justify-content:space-around;margin-top:24px;gap:30px}
+body.printing .p-assina .a{text-align:center;font-size:9px;flex:1}
+body.printing .p-assina .a .ln{border-top:1px solid #000;margin:0 10px 3px;padding-top:3px}
+.print-coren,.p-obs,.p-assina{display:none}
 </style>
 </head>
 <body>
@@ -204,7 +211,8 @@ const DEF_TURNOS=()=>[
   {code:"SD",nome:"Diurno",horas:12,periodo:"dia",auto:true},
   {code:"SN",nome:"Noturno",horas:12,periodo:"noite",auto:true},
   {code:"M",nome:"Manhã",horas:6,periodo:"dia",auto:true},
-  {code:"T",nome:"Tarde",horas:6,periodo:"dia",auto:true}];
+  {code:"T",nome:"Tarde",horas:6,periodo:"dia",auto:true},
+  {code:"PL",nome:"Plantão 24h",horas:24,periodo:"dia",auto:false}];
 const DEF_LIC=()=>[
   {code:"F",nome:"Folga"},{code:"FE",nome:"Férias"},{code:"LN",nome:"Licença Nojo (luto)"},
   {code:"LG",nome:"Licença Gala (casamento)"},{code:"LM",nome:"Licença Médica"},
@@ -228,6 +236,7 @@ function persistCloud(user,s){if(!sb||!user)return;clearTimeout(_t);
   _t=setTimeout(()=>sb.from("estados").upsert({user_id:user.id,dados:s,atualizado_em:new Date().toISOString()}).then(()=>{}),900);}
 
 // ---------- motor ----------
+const abateAlvo=code=>!!code&&code!=="F";  // toda licença (menos Folga) reduz o alvo — não gera carga negativa
 function gerarEscala({y,m,eq,ym}){
   const dim=daysInMonth(y,m);const hol=(eq.holidayMap||{})[ym]||[];
   const isFds=d=>isWknd(y,m,d)||hol.includes(d);const dayType=d=>isFds(d)?"fds":"semana";
@@ -236,10 +245,10 @@ function gerarEscala({y,m,eq,ym}){
   const autoTurnos=eq.turnos.filter(t=>t.auto);const autoCodes=new Set(autoTurnos.map(t=>t.code));
   const cur=(eq.sched||{})[ym]||{};const next={};eq.profs.forEach(p=>next[p.id]={});
   eq.profs.forEach(p=>{const r=cur[p.id]||{};for(const d in r){const v=r[d];if(v&&v!=="F"&&!autoCodes.has(v))next[p.id][d]=v;}});
-  const ds=eq.diasSemana||6;let dc=0;
-  for(let d=1;d<=dim;d++){const w=wdOf(y,m,d);const off=ds>=6?w===0:(w===0||w===6);if(!off&&!hol.includes(d))dc++;}
+  const ds=eq.diasSemana||6;
+  const alvoAbat=p=>{let dc=0;for(let d=1;d<=dim;d++){const w=wdOf(y,m,d);const off=ds>=6?w===0:(w===0||w===6);if(off||hol.includes(d))continue;const v=(cur[p.id]||{})[d];if(abateAlvo(v))continue;dc++;}return Math.round((p.weekly||0)/ds*dc);};
   const tgt={},hrs={},dia={},noi={},fds={},fer={};
-  eq.profs.forEach(p=>{tgt[p.id]=Math.round((p.weekly||0)/ds*dc);hrs[p.id]=0;dia[p.id]=0;noi[p.id]=0;fds[p.id]=0;fer[p.id]=0;
+  eq.profs.forEach(p=>{tgt[p.id]=alvoAbat(p);hrs[p.id]=0;dia[p.id]=0;noi[p.id]=0;fds[p.id]=0;fer[p.id]=0;
     for(const d in next[p.id])hrs[p.id]+=turnoH[next[p.id][d]]||0;});
   const busy=(id,d)=>{const v=next[id][d];return v!=null&&v!=="";};
   const longPrev=(id,d)=>{const v=next[id][d-1];return !!v&&(turnoH[v]||0)>=12;};
@@ -254,6 +263,7 @@ function gerarEscala({y,m,eq,ym}){
       for(const sl of slots){if(sl.rem<=0)continue;
         for(const p of eq.profs){
           if(p.funcaoId!==sl.fn.id||busy(p.id,d))continue;if(eq.restRule&&longPrev(p.id,d))continue;if(!permitido(p,sl.t.code))continue;
+          {const pv=next[p.id][d-1];if(pv&&(turnoH[pv]||0)>=24&&sl.t.periodo!=="noite")continue;} // após PL(24h): dia seguinte só noturno
           if(p.pref==="so_dia"&&sl.t.periodo==="noite")continue;if(p.pref==="so_noite"&&sl.t.periodo==="dia")continue;
           const pp=prefPer(p);let s=hrs[p.id]/(tgt[p.id]||1)+(isH?(balFer?fer[p.id]*WH:0):isW?(balFds?fds[p.id]*WF:0):0)+(pp?0:(sl.t.periodo==="dia"?dia[p.id]:noi[p.id])*WT);
           if(pp&&pp!==sl.t.periodo)s+=WP;if(pp&&pp===sl.t.periodo)s-=WM;
@@ -1084,6 +1094,7 @@ function App(){
       <div className="grid-scroll">
         {eq.profs.length===0?<div className="empty">Cadastre a equipe e clique em “Gerar escala”.</div>:
         <table className="sched"><thead><tr><th className="name-col">Profissional</th>
+          <th className="print-coren" style={{width:70,fontSize:9}}>Registro</th>
           {days.map(d=><th key={d} className={isHol(d)?"hol":isWknd(ano,mes,d)?"wknd":""}><div className="dwd">{WD[wdOf(ano,mes,d)]}</div><div className="dnum">{d}</div>{isHol(d)&&<div className="fer">FER</div>}</th>)}
           <th className="tot-col">Carga / Balanço</th></tr></thead>
         <tbody>{eq.profs.map(p=>{const r=sched[p.id]||{};const h=totais[p.id]||0;const t=alvo(p);const f=eq.funcoes.find(x=>x.id===p.funcaoId);
@@ -1091,6 +1102,7 @@ function App(){
           return <tr key={p.id}><td className="name-col"><div style={{display:"flex",alignItems:"center",gap:6}}>
               <div className="noprint" style={{display:"flex",flexDirection:"column",gap:1}}><button className="btn sm" style={{padding:"0 5px",lineHeight:"14px",fontSize:9}} disabled={idx===0} onClick={()=>moveProf(p.id,-1)} title="Mover para cima">▲</button><button className="btn sm" style={{padding:"0 5px",lineHeight:"14px",fontSize:9}} disabled={idx===eq.profs.length-1} onClick={()=>moveProf(p.id,1)} title="Mover para baixo">▼</button></div>
               <div><div className="nm-main">{p.nome}</div><div className="nm-tags">{(f?f.nome:"").toUpperCase().slice(0,14)} · {p.weekly}h · {Array.isArray(p.turnos)&&p.turnos.length?"só "+p.turnos.join("/"):PREFS[p.pref]||"misto"}</div></div></div></td>
+                <td className="print-coren mono" style={{fontSize:9,padding:"0 4px"}}>{(p.dossie||{}).coren||""}</td>
             {days.map(d=>{const code=(verOriginal&&orig?((orig.sched[p.id]||{})[d]||""):(r[d]||""));return <td key={d} className={isHol(d)?"hol":isWknd(ano,mes,d)?"wknd":""}>
               {verOriginal&&orig?<div className={"chip "+cellClass(code)} style={{width:"100%",borderRadius:0,height:36}}>{code||"·"}</div>:
               <React.Fragment><span className="cell-print" style={{display:"none"}}>{code||""}</span><select className={"cell-sel "+cellClass(code)} value={code} onChange={e=>setCell(p.id,d,e.target.value)}>
@@ -1099,16 +1111,33 @@ function App(){
             <td className="tot-col"><div className="tot-wrap" style={{flexDirection:"column",alignItems:"flex-end",gap:1,height:"auto",padding:"3px 12px"}}><div style={{display:"flex",gap:8,alignItems:"center"}}><span className="tot-h mono">{h}h</span>{pill(h,t)}</div>
               <div className="nm-tags" style={{marginTop:0}}>{Object.entries(resumoProf[p.id]||{}).map(([k,v])=>k+" "+v).join(" · ")||"—"}</div></div></td></tr>;})}</tbody>
         <tfoot>
-          {eq.turnos.map(t=><tr className="sum" key={"s"+t.code}><td className="name-col cov-lbl">Total {t.code} <small>· {t.nome}</small></td>
+          {eq.turnos.map(t=><tr className="sum" key={"s"+t.code}><td className="name-col cov-lbl">Total {t.code} <small>· {t.nome}</small></td><td className="print-coren"></td>
             {days.map(d=>{const c=resumoDia[d].porTurno[t.code]||0;return <td key={d} className={isHol(d)?"hol":isWknd(ano,mes,d)?"wknd":""}>{c||""}</td>;})}<td className="tot-col"></td></tr>)}
-          <tr className="sum"><td className="name-col cov-lbl">Em plantão no dia</td>
+          <tr className="sum"><td className="name-col cov-lbl">Em plantão no dia</td><td className="print-coren"></td>
             {days.map(d=>{const c=resumoDia[d].plantao;return <td key={d} className={(isHol(d)?"hol ":isWknd(ano,mes,d)?"wknd ":"")+(c===0&&eq.profs.length?"zero":"")}>{c}</td>;})}<td className="tot-col"></td></tr>
-          <tr className="sum"><td className="name-col cov-lbl">Folga / afastados</td>
+          <tr className="sum"><td className="name-col cov-lbl">Folga / afastados</td><td className="print-coren"></td>
             {days.map(d=><td key={d} className={isHol(d)?"hol":isWknd(ano,mes,d)?"wknd":""} style={{color:"var(--muted)"}}>{resumoDia[d].fora||""}</td>)}<td className="tot-col"></td></tr>
           {autoTurnos.map(t=>eq.funcoes.filter(f=>((((eq.cover||{}).semana||{})[t.code]||{})[f.id]||0)>0||((((eq.cover||{}).fds||{})[t.code]||{})[f.id]||0)>0).map(f=><tr key={t.code+f.id}>
-          <td className="name-col cov-lbl">{t.code} {f.nome.slice(0,10)} <small>· sem {(((eq.cover||{}).semana||{})[t.code]||{})[f.id]||0} / fds {(((eq.cover||{}).fds||{})[t.code]||{})[f.id]||0}</small></td>
+          <td className="name-col cov-lbl">{t.code} {f.nome.slice(0,10)} <small>· sem {(((eq.cover||{}).semana||{})[t.code]||{})[f.id]||0} / fds {(((eq.cover||{}).fds||{})[t.code]||{})[f.id]||0}</small></td><td className="print-coren"></td>
           {days.map(d=>{const c=(coverage[d][t.code]||{})[f.id]||0;const need=req(d,t.code,f.id);return <td key={d} className={(isHol(d)?"hol ":isWknd(ano,mes,d)?"wknd ":"")+(c<need?"under":"")}>{c||""}</td>;})}
           <td className="tot-col"></td></tr>))}</tfoot></table>}
+      </div>
+
+      <div className="panel noprint" data-sec="escala"><h2>Observações e assinatura (saem na impressão)</h2>
+        <div className="field" style={{marginBottom:10}}><label>Observações da escala</label>
+          <textarea value={(eq.obs)||""} onChange={e=>updEq(x=>({...x,obs:e.target.value}))} placeholder="Ex.: Retém escala: fulano. Restrições médicas. Acionamentos." style={{width:"100%",minHeight:70,border:"1px solid var(--line)",borderRadius:8,padding:"8px 10px",font:"inherit"}}/></div>
+        <div className="row">
+          <div className="field" style={{flex:1,minWidth:180}}><label>Responsável (nome)</label><input style={{width:"100%"}} value={(eq.assinaturaNome)||""} onChange={e=>updEq(x=>({...x,assinaturaNome:e.target.value}))} placeholder="Nome de quem assina"/></div>
+          <div className="field" style={{flex:1,minWidth:180}}><label>Cargo / registro</label><input style={{width:"100%"}} value={(eq.assinaturaCargo)||""} onChange={e=>updEq(x=>({...x,assinaturaCargo:e.target.value}))} placeholder="Ex.: Enfermeira encarregada · COREN-BA 000000"/></div>
+          <div className="field"><label>2ª assinatura (opcional)</label><input style={{width:"100%"}} value={(eq.assinatura2)||""} onChange={e=>updEq(x=>({...x,assinatura2:e.target.value}))} placeholder="Ex.: Chefe da Divisão"/></div>
+        </div>
+        <div className="hint">Aparece impresso abaixo da grade, com linha de assinatura e data.</div></div>
+
+      <div className="p-obs print-show" data-sec="escala"><b>OBSERVAÇÕES</b>{"\n"}{(eq.obs)||""}</div>
+      <div className="p-assina print-show" data-sec="escala">
+        <div className="a"><div className="ln">&nbsp;</div>{eq.assinaturaNome||"Responsável"}<br/><span style={{color:"#555"}}>{eq.assinaturaCargo||""}</span></div>
+        {(eq.assinatura2)&&<div className="a"><div className="ln">&nbsp;</div>{eq.assinatura2}</div>}
+        <div className="a"><div className="ln">&nbsp;</div>{S.org.nome} · {MESES[mes]}/{ano}<br/><span style={{color:"#555"}}>Emitido em {new Date().toLocaleDateString("pt-BR")}</span></div>
       </div>
 
       <div className="legend noprint print-show" data-sec="escala" data-flex="1">
@@ -1159,6 +1188,7 @@ function App(){
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+window.addEventListener("beforeprint",()=>document.body.classList.add("printing"));window.addEventListener("afterprint",()=>document.body.classList.remove("printing"));
 </script>
 </body>
 </html>
