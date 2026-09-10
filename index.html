@@ -160,6 +160,8 @@ tfoot tr.sum td{background:#e9f1f1;color:var(--ink);font-size:12px}tfoot tr.sum 
   @page{size:A4 landscape;margin:6mm}
   html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+body.printing > *:not(#root){display:none!important}
+body.printing #root > *:not(.wrap){display:none!important}
 body.printing .noprint,body.printing .btn,body.printing .bcap{display:none!important}
 body.printing .wrap > *:not(.print-show){display:none!important}
 body.printing .wrap{max-width:none;padding:0;margin:0}
@@ -606,7 +608,8 @@ function App(){
   const days=Array.from({length:dim},(_,i)=>i+1);
   const diasContados=useMemo(()=>{let n=0;for(let d=1;d<=dim;d++){const w=wdOf(ano,mes,d);
     const off=(eq.diasSemana||6)>=6?w===0:(w===0||w===6);if(!off&&!hol.includes(d))n++;}return n;},[dim,ano,mes,eq.diasSemana,hol]);
-  const alvo=p=>Math.round((p.weekly||0)/(eq.diasSemana||6)*diasContados);
+  // alvo por pessoa: desconta os dias de licença que abatem (férias, LMT, nojo, gala, médica, abonado…) — não gera carga negativa
+  const alvo=p=>{const ds2=eq.diasSemana||6;let dc=0;const r=sched[p.id]||{};for(let d=1;d<=dim;d++){const w=wdOf(ano,mes,d);const off=ds2>=6?w===0:(w===0||w===6);if(off||hol.includes(d))continue;if(abateAlvo(r[d]))continue;dc++;}return Math.round((p.weekly||0)/ds2*dc);};
   const hDe=code=>turnoMap[code]?turnoMap[code].horas:0;
   const totais=useMemo(()=>{const t={};eq.profs.forEach(p=>{let h=0;const r=sched[p.id]||{};for(const d in r)h+=hDe(r[d]);t[p.id]=h;});return t;},[eq.profs,sched,turnoMap]);
   const coverage=useMemo(()=>{const c={};for(let d=1;d<=dim;d++){c[d]={};autoTurnos.forEach(t=>{c[d][t.code]={};eq.funcoes.forEach(f=>c[d][t.code][f.id]=0);});}
