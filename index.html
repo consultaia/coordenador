@@ -642,9 +642,10 @@ function App(){
     const {data:a}=await sb.from("assinaturas").select("limite_equipes,status,vigente_ate").eq("user_id",user.id).order("atualizado_em",{ascending:false}).limit(1).maybeSingle();
     if(a)setS(s=>({...s,plano:{limite:a.limite_equipes||1,status:a.status||"expirado",vigenteAte:a.vigente_ate}}));setVerificando(false);}
   useEffect(()=>{if(!sb||!user)return;const t=setInterval(()=>{carregarSols();if(!liberado)recarregarPlano();},30000);return()=>clearInterval(t);},[user,S.plano]);
-  // códigos de setor sincronizados (o que a equipe digita no celular)
-  useEffect(()=>{if(!sb||!user||!cloudLoaded.current)return;const rows=S.equipes.map(e=>({codigo:e.codigo,user_id:user.id,equipe_id:e.id,nome:e.nome,atualizado_em:new Date().toISOString()})).filter(r=>r.codigo);
-    if(rows.length)sb.from("setores").upsert(rows,{onConflict:"codigo"}).then(()=>{});},[user,S.equipes.map(e=>e.id+e.codigo+e.nome).join("|")]);
+  // códigos de setor sincronizados (o que a equipe digita no celular) — grava sempre que mudar
+  const [syncSetores,setSyncSetores]=useState("");
+  useEffect(()=>{if(!sb||!user)return;const rows=S.equipes.map(e=>({codigo:e.codigo,user_id:user.id,equipe_id:e.id,nome:e.nome,atualizado_em:new Date().toISOString()})).filter(r=>r.codigo);
+    if(!rows.length)return;sb.from("setores").upsert(rows,{onConflict:"codigo"}).then(({error})=>setSyncSetores(error?"erro: "+error.message:"ok "+new Date().toLocaleTimeString("pt-BR")));},[user,S.equipes.map(e=>e.id+"|"+e.codigo+"|"+e.nome).join("#")]);
   // garante código em equipes antigas
   useEffect(()=>{if(S.equipes.some(e=>!e.codigo))upd(s=>({...s,equipes:s.equipes.map(e=>e.codigo?e:{...e,codigo:genCodigo(e.nome)})}));},[S.equipes.length]);
   // regenera códigos de setor antigos que tenham caracteres ambíguos (O,0,I,L,1)
@@ -1025,7 +1026,11 @@ function App(){
         <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}><span>Código do setor <b>{eq.nome}</b>:</span><span className="codigo">{eq.codigo}</span>
           <button className="btn sm" onClick={()=>{navigator.clipboard&&navigator.clipboard.writeText(eq.codigo);}}>copiar</button>
           <span className="hint" style={{marginTop:0}}>só letras e números, sem O, 0, I, L ou 1 — não há como confundir</span>
-          <button className="btn ghost sm" onClick={()=>{if(confirm("Gerar um novo código? O antigo deixa de funcionar."))updEq(x=>({...x,codigo:genCodigo(x.nome)}));}}>gerar novo</button></div>
+          <button className="btn ghost sm" onClick={()=>{if(confirm("Gerar um novo código? O antigo deixa de funcionar."))updEq(x=>({...x,codigo:genCodigo(x.nome)}));}}>gerar novo</button>
+          {online&&<BtnCap cap="confere se a equipe consegue entrar"><button className="btn sm" onClick={async()=>{try{const r=await fetch(WORKER_URL+"/portal/setor?codigo="+encodeURIComponent(eq.codigo));const j=await r.json();
+            if(r.ok)alert("✓ Acesso OK. O portal reconhece o código "+eq.codigo+" ("+j.setor+") com "+j.profs.length+" profissional(is)"+(j.profs.some(p=>!p.temPin)?" — atenção: "+j.profs.filter(p=>!p.temPin).map(p=>p.nome).join(", ")+" sem PIN.":"."));
+            else alert("✗ "+(j.error||"erro "+r.status)+"\nSincronização dos códigos: "+(syncSetores||"ainda não rodou")+"\nSe persistir: o Worker no ar pode estar desatualizado (implante o coordenador-worker.js mais recente).");}catch(e){alert("✗ Não consegui falar com o Worker ("+WORKER_URL+"). Confira se ele está no ar.");}}}>Testar acesso</button></BtnCap>}
+          {online&&syncSetores&&<span className="hint" style={{marginTop:0}}>sync: {syncSetores}</span>}</div>
         <div className="hint">Cada profissional abre {online?location.origin+location.pathname:"o app"} no celular → "Sou profissional da equipe" → digita este código, escolhe o nome e entra com o PIN de 4 dígitos que você definiu no cadastro. Pode adicionar à tela de início como app.</div></div>
 
       <div className="panel noprint" data-sec="equipe"><h2>Comunicado no portal · {eq.nome}</h2>
