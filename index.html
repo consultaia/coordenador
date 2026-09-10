@@ -461,12 +461,14 @@ function PainelTroca({eq,sched,turnoMap,dim,onTrocar,log}){const [A,setA]=useSta
     {log.length>0&&<div style={{marginTop:10}}><div className="field"><label>Registro de trocas do mês</label></div>{log.map((t,i)=><div key={i} className="hint" style={{marginTop:2}}>• {t.em}: {t.de} cedeu dia {t.diaDe} ({t.tDe}) ↔ {t.para} cedeu dia {t.diaPara} ({t.tPara})</div>)}</div>}
   </div>;}
 
-function Landing({onEntrar,onCriar,onReset,onPortal,erro,info,busy}){const [email,setEmail]=useState("");const [senha,setSenha]=useState("");const [n,setN]=useState(1);const [per,setPer]=useState(6);const [modo,setModo]=useState("entrar");
+function Landing({onEntrar,onCriar,onReset,onPortal,erro,info,busy}){const [email,setEmail]=useState("");const [senha,setSenha]=useState("");const [n,setN]=useState(2);const [per,setPer]=useState(6);const [modo,setModo]=useState("entrar");const [contratar,setContratar]=useState(false);
+  const irCriar=(c)=>{setModo("criar");setContratar(!!c);setTimeout(()=>{const el=document.getElementById("cta-auth");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});const i=document.getElementById("auth-email");if(i)i.focus();},50);};
+  const submitCriar=()=>onCriar(email,senha,contratar?{n,per}:null);
   return <div className="land">
     <div className="hero"><div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}><img src="icon-192.png" alt="" style={{width:44,height:44,borderRadius:10,background:"#fff"}} onError={e=>e.currentTarget.style.display="none"}/><span style={{fontFamily:"'Space Grotesk'",fontWeight:700,fontSize:20}}>Coordenador</span></div>
       <h1>A escala do mês pronta em minutos — e sua equipe acompanha pelo celular.</h1>
       <p>Feito para coordenadores de enfermagem. O sistema distribui os plantões respeitando carga horária, descanso, regime e fins de semana. A equipe vê a própria escala e pede troca pelo app; você só autoriza.</p>
-      <div className="cta"><button className="p" onClick={()=>document.getElementById("cta-conta")&&document.getElementById("cta-conta").scrollIntoView({behavior:"smooth"})}>Começar teste grátis (14 dias)</button><button className="g" onClick={onPortal}>Sou da equipe</button></div>
+      <div className="cta"><button className="p" onClick={()=>irCriar(false)}>Começar teste grátis (14 dias)</button><button className="g" onClick={onPortal}>Sou da equipe</button></div>
     </div>
     <div className="bene">
       <div className="c"><div className="ic">⚡</div><h3>Escala automática e justa</h3><p>Cobertura por turno, folga pós-plantão e fins de semana/feriados equilibrados entre todos. Ajuste manual quando quiser.</p></div>
@@ -487,14 +489,17 @@ function Landing({onEntrar,onCriar,onReset,onPortal,erro,info,busy}){const [emai
           <div className="field"><label>Período</label><div className="seg"><button className={per===6?"on":""} onClick={()=>setPer(6)}>Semestral</button><button className={per===12?"on":""} onClick={()=>setPer(12)}>Anual</button></div></div></div>
         <div className="price">{fmtR(PRECO(n,per))}</div><div className="hint" style={{marginTop:2}}>pagamento único por Pix · {per===12?"vale 12 meses (2 grátis)":"vale 6 meses"} · equivale a {fmtR(PRECO(n,per)/per)}/mês</div>
         <div className="hint">1 escala = 1 setor com escala mensal própria. Teste grátis por 14 dias ao criar a conta; o pagamento é feito dentro da plataforma.</div>
-        <button className="btn primary" style={{marginTop:10}} onClick={()=>setModo("criar")}>Criar conta e começar o teste grátis</button></div>
-      <div className="panel auth"><h2>{modo==="criar"?"Criar conta de coordenador":modo==="reset"?"Recuperar senha":"Entrar (coordenador)"}</h2>
-        <input type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email"/>
-        {modo!=="reset"&&<input type="password" placeholder="senha (mín. 6 caracteres)" value={senha} onChange={e=>setSenha(e.target.value)} autoComplete={modo==="criar"?"new-password":"current-password"} onKeyDown={e=>e.key==="Enter"&&(modo==="criar"?onCriar(email,senha):onEntrar(email,senha))}/>}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
+          <BtnCap cap="cria a conta e já abre o Pix"><button className="btn primary" onClick={()=>irCriar(true)}>Contratar agora</button></BtnCap>
+          <BtnCap cap="14 dias, sem pagar nada"><button className="btn" onClick={()=>irCriar(false)}>Só o teste grátis</button></BtnCap></div></div>
+      <div className="panel auth" id="cta-auth"><h2>{modo==="criar"?(contratar?"Criar conta e contratar ("+n+" escala"+(n>1?"s":"")+" · "+(per===12?"anual":"semestral")+")":"Criar conta de coordenador"):modo==="reset"?"Recuperar senha":"Entrar (coordenador)"}</h2>
+        {modo==="criar"&&<div className="hint" style={{marginTop:0,marginBottom:8}}>Preencha e-mail e senha e clique em <b>Criar conta</b>. {contratar?"Em seguida abre o Pix do plano escolhido.":"Você entra na hora, com 14 dias grátis."}</div>}
+        <input id="auth-email" type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email"/>
+        {modo!=="reset"&&<input type="password" placeholder="senha (mín. 6 caracteres)" value={senha} onChange={e=>setSenha(e.target.value)} autoComplete={modo==="criar"?"new-password":"current-password"} onKeyDown={e=>e.key==="Enter"&&(modo==="criar"?submitCriar():onEntrar(email,senha))}/>}
         {erro&&<div className="hint" style={{color:"var(--bad)",marginBottom:6}}>{erro}</div>}{info&&<div className="hint" style={{color:"var(--ok)",marginBottom:6}}>{info}</div>}
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {modo==="entrar"&&<button className="btn primary" disabled={busy} onClick={()=>onEntrar(email,senha)}>Entrar</button>}
-          {modo==="criar"&&<button className="btn primary" disabled={busy} onClick={()=>onCriar(email,senha)}>Criar conta</button>}
+          {modo==="criar"&&<button className="btn primary" disabled={busy||!email||!senha} onClick={submitCriar}>{contratar?"Criar conta e ir para o Pix":"Criar conta"}</button>}
           {modo==="reset"&&<button className="btn primary" disabled={busy} onClick={()=>onReset(email)}>Enviar link</button>}
           <button className="btn" onClick={()=>setModo(modo==="entrar"?"criar":"entrar")}>{modo==="entrar"?"Criar conta":"Já tenho conta"}</button>
           <button className="btn ghost" onClick={()=>setModo("reset")}>Esqueci a senha</button></div>
@@ -573,7 +578,7 @@ function PortalOnline({onVoltar}){const [codigo,setCodigo]=useState(localStorage
     {sols.length>0&&<div className="panel"><h2>Meus pedidos</h2>{sols.map(x=><div key={x.id} className="hint" style={{marginTop:2}}>• {MESES[+x.ym.split("-")[1]].slice(0,3)}: {x.de===eu.id?"você":nm(x.de)} dia {x.diaDe} ↔ {x.para===eu.id?"você":nm(x.para)} dia {x.diaPara} — <b>{ST[x.status]}</b>{x.comentario?" · 💬 "+x.comentario:""}</div>)}</div>}
   </div>;}
 
-function PlanosBox({n0,onPagar}){const [n,setN]=useState(n0||1);const [per,setPer]=useState(6);
+function PlanosBox({n0,per0,onPagar}){const [n,setN]=useState(n0||1);const [per,setPer]=useState(per0||6);
   return <div className="group"><div className="row"><div className="field"><label>Escalas (setores)</label><select value={n} onChange={e=>setN(+e.target.value)}>{PLANOS.map(p=><option key={p.n} value={p.n}>{p.n} escala{p.n>1?"s":""}</option>)}</select></div>
       <div className="field"><label>Período</label><div className="seg"><button className={per===6?"on":""} onClick={()=>setPer(6)}>Semestral</button><button className={per===12?"on":""} onClick={()=>setPer(12)}>Anual</button></div></div>
       <div><div className="price">{fmtR(PRECO(n,per))}</div><div className="hint" style={{marginTop:0}}>pagamento único · {per===12?"12 meses":"6 meses"} · {fmtR(PRECO(n,per)/per)}/mês</div></div>
@@ -663,9 +668,12 @@ function App(){
   useEffect(()=>{saveLocal(S);if(cloudLoaded.current)persistCloud(user,S);},[S,user]);
   useEffect(()=>{if(!sb||!user)return;const h=()=>{clearTimeout(_t);try{const ts=new Date().toISOString();sb.from("estados").upsert({user_id:user.id,dados:{...S,_ts:ts},atualizado_em:ts}).then(()=>{});}catch(e){}};window.addEventListener("beforeunload",h);return()=>window.removeEventListener("beforeunload",h);},[S,user]);
   async function entrar(email,senha){if(!sb)return;setAuthErro("");setAuthBusy(true);const {error}=await sb.auth.signInWithPassword({email,password:senha});setAuthBusy(false);if(error)setAuthErro(error.message==="Invalid login credentials"?"E-mail ou senha incorretos.":error.message);}
-  async function criarConta(email,senha){if(!sb)return;setAuthErro("");setAuthInfo("");if(!senha||senha.length<6){setAuthErro("Senha com pelo menos 6 caracteres.");return;}setAuthBusy(true);
+  const [planoPre,setPlanoPre]=useState(null);
+  async function criarConta(email,senha,contr){if(!sb)return;setAuthErro("");setAuthInfo("");if(!email){setAuthErro("Informe o e-mail.");return;}if(!senha||senha.length<6){setAuthErro("Senha com pelo menos 6 caracteres.");return;}setAuthBusy(true);
     const {data,error}=await sb.auth.signUp({email,password:senha,options:{emailRedirectTo:location.href.split("#")[0]}});setAuthBusy(false);
-    if(error){setAuthErro(error.message);return;}if(!data.session)setAuthInfo("Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.");}
+    if(error){setAuthErro(/already registered|already exists/i.test(error.message)?"Este e-mail já tem conta. Use “Já tenho conta” para entrar.":error.message);return;}
+    if(!data.session){setAuthInfo("Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.");return;}
+    if(contr){setPlanoPre(contr);setTimeout(()=>setShowPlanos(true),600);}}
   async function resetSenha(email){if(!sb||!email)return;setAuthBusy(true);const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href.split("#")[0]});setAuthBusy(false);setAuthErro(error?error.message:"");if(!error)setAuthInfo("Enviamos um link para redefinir a senha.");}
   async function sairConta(){if(!sb)return;await sb.auth.signOut();cloudLoaded.current=false;setUser(null);}
   async function salvarNovaSenha(){if(novaSenha.length<6){setAuthErro("Senha com pelo menos 6 caracteres.");return;}setAuthBusy(true);
@@ -977,7 +985,8 @@ ${t.outerHTML}
       {showPlanos&&<div className="overlay noprint" onClick={()=>setShowPlanos(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <h2 style={{fontFamily:"'Space Grotesk'",margin:"0 0 6px"}}>Planos</h2>
         <p style={{color:"var(--muted)",margin:"0 0 12px",fontSize:13}}>1 escala = 1 setor. Pagamento único por Pix (6 ou 12 meses), sem cobrança recorrente. {S.plano.vigenteAte?"Plano atual até "+new Date(S.plano.vigenteAte).toLocaleDateString("pt-BR")+"; renovar antes soma ao prazo.":""}</p>
-        <PlanosBox n0={S.plano.limite||1} onPagar={pagar}/>
+        <PlanosBox n0={(planoPre&&planoPre.n)||S.plano.limite||1} per0={planoPre&&planoPre.per} onPagar={pagar}/>
+        {planoPre&&<div className="hint" style={{color:"var(--ok)"}}>Conta criada ✓ — confira o plano e clique em “Pagar com Pix”. O teste grátis de 14 dias já está ativo enquanto isso.</div>}
         {!online&&<div className="hint">Entre com sua conta (e-mail e senha) para contratar.</div>}
         <div style={{textAlign:"right",marginTop:12}}><button className="btn" onClick={()=>setShowPlanos(false)}>Fechar</button></div></div></div>}
 
