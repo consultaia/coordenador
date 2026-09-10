@@ -192,8 +192,9 @@ const sb=(SUPABASE_URL&&SUPABASE_ANON_KEY)?supabase.createClient(SUPABASE_URL,SU
 const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const WD=["D","S","T","Q","Q","S","S"];
 const PREFS={misto:"Equilibrado dia/noite",mais_dia:"Mais diurno",mais_noite:"Mais noturno",so_dia:"Só diurno",so_noite:"Só noturno"};
-const MENSAL=n=>+(14.90+5*(n-1)).toFixed(2);              // referência mensal por nº de escalas
-const PRECO=(n,per)=>+(MENSAL(n)*(per===12?10:5)).toFixed(2); // semestral = 5 mensalidades · anual = 10 (2 meses grátis)
+const SEMESTRAL=n=>+(n<=1?39.90:(48.90+5*(n-2))).toFixed(2); // 1→39,90 · 2→48,90 · +5 por escala
+const PRECO=(n,per)=>+(per===12?(SEMESTRAL(n)*10/6):SEMESTRAL(n)).toFixed(2); // anual = 2 meses grátis (paga 10, usa 12)
+const MENSAL=n=>+(SEMESTRAL(n)/6).toFixed(2);
 const PLANOS=Array.from({length:12},(_,i)=>({n:i+1,preco:MENSAL(i+1)}));
 const fmtR=v=>"R$ "+v.toFixed(2).replace(".",",");
 const AMBIG={"O":"P","0":"P","I":"K","1":"K","L":"K","5":"S","S":"S","B":"B","8":"H"}; // evita caracteres confundíveis (mantém S/B mas fixa O/0/I/1/L)
@@ -453,7 +454,7 @@ function Landing({onEntrar,onCriar,onReset,onPortal,erro,info,busy}){const [emai
       <div className="panel" id="cta-conta"><h2>Contrate aqui</h2>
         <div className="row" style={{marginBottom:10}}><div className="field"><label>Escalas (setores)</label><select value={n} onChange={e=>setN(+e.target.value)}>{PLANOS.map(p=><option key={p.n} value={p.n}>{p.n} escala{p.n>1?"s":""}</option>)}</select></div>
           <div className="field"><label>Período</label><div className="seg"><button className={per===6?"on":""} onClick={()=>setPer(6)}>Semestral</button><button className={per===12?"on":""} onClick={()=>setPer(12)}>Anual</button></div></div></div>
-        <div className="price">{fmtR(PRECO(n,per))}</div><div className="hint" style={{marginTop:2}}>{per===12?"por ano · 2 meses grátis":"por semestre · 1 mês grátis"} · Pix · equivale a {fmtR(PRECO(n,per)/per)}/mês</div>
+        <div className="price">{fmtR(PRECO(n,per))}</div><div className="hint" style={{marginTop:2}}>pagamento único por Pix · {per===12?"vale 12 meses (2 grátis)":"vale 6 meses"} · equivale a {fmtR(PRECO(n,per)/per)}/mês</div>
         <div className="hint">1 escala = 1 setor com escala mensal própria. Teste grátis por 14 dias ao criar a conta; o pagamento é feito dentro da plataforma.</div>
         <button className="btn primary" style={{marginTop:10}} onClick={()=>setModo("criar")}>Criar conta e começar o teste grátis</button></div>
       <div className="panel auth"><h2>{modo==="criar"?"Criar conta de coordenador":modo==="reset"?"Recuperar senha":"Entrar (coordenador)"}</h2>
@@ -468,11 +469,11 @@ function Landing({onEntrar,onCriar,onReset,onPortal,erro,info,busy}){const [emai
           <button className="btn ghost" onClick={()=>setModo("reset")}>Esqueci a senha</button></div>
         <div style={{marginTop:16,borderTop:"1px solid var(--line)",paddingTop:12}}><div className="hint" style={{marginTop:0,marginBottom:6}}>É da equipe (técnico, enfermeiro…)? Entre com o código do setor e seu PIN.</div>
           <button className="btn" onClick={onPortal}>👤 Sou profissional da equipe</button></div></div></div>
-    <div className="panel" style={{marginTop:18}}><h2>Planos — pague por Pix, semestral ou anual</h2>
-      <table className="ptable"><thead><tr><th>Escalas (setores)</th><th>Semestral</th><th>Anual (2 meses grátis)</th></tr></thead><tbody>
+    <div className="panel" style={{marginTop:18}}><h2>Planos — Pix único, sem mensalidade</h2>
+      <table className="ptable"><thead><tr><th>Escalas (setores)</th><th>Semestral (6 meses)</th><th>Anual (12 meses)</th></tr></thead><tbody>
         {[1,2,3,5].map(x=><tr key={x}><td>{x} escala{x>1?"s":""}</td><td className="pr">{fmtR(PRECO(x,6))}</td><td className="pr">{fmtR(PRECO(x,12))}</td></tr>)}
       </tbody></table>
-      <div className="hint">De 1 a 12 escalas. Cada escala = 1 setor com escala mensal própria. Comece com 14 dias grátis; o pagamento é feito dentro da plataforma.</div></div>
+      <div className="hint">De 1 a 12 escalas. Cada escala = 1 setor com escala mensal própria. Pagamento único por Pix (não é assinatura recorrente). Comece com 14 dias grátis.</div></div>
     <div className="panel faq"><h2>Perguntas frequentes</h2>
       <details><summary>Preciso instalar algo?</summary><p>Não. Funciona no navegador do computador e do celular. No celular dá para "adicionar à tela de início" e usar como aplicativo.</p></details>
       <details><summary>Como a equipe acessa?</summary><p>Você define um PIN de 4 dígitos para cada profissional e passa o código do setor. Eles entram pelo celular, veem a escala e pedem trocas — sem instalar nada.</p></details>
@@ -541,7 +542,7 @@ function PortalOnline({onVoltar}){const [codigo,setCodigo]=useState(localStorage
 function PlanosBox({n0,onPagar}){const [n,setN]=useState(n0||1);const [per,setPer]=useState(6);
   return <div className="group"><div className="row"><div className="field"><label>Escalas (setores)</label><select value={n} onChange={e=>setN(+e.target.value)}>{PLANOS.map(p=><option key={p.n} value={p.n}>{p.n} escala{p.n>1?"s":""}</option>)}</select></div>
       <div className="field"><label>Período</label><div className="seg"><button className={per===6?"on":""} onClick={()=>setPer(6)}>Semestral</button><button className={per===12?"on":""} onClick={()=>setPer(12)}>Anual</button></div></div>
-      <div><div className="price">{fmtR(PRECO(n,per))}</div><div className="hint" style={{marginTop:0}}>{per===12?"por ano · 2 meses grátis":"por semestre · 1 mês grátis"} · {fmtR(PRECO(n,per)/per)}/mês</div></div>
+      <div><div className="price">{fmtR(PRECO(n,per))}</div><div className="hint" style={{marginTop:0}}>pagamento único · {per===12?"12 meses":"6 meses"} · {fmtR(PRECO(n,per)/per)}/mês</div></div>
       <BtnCap cap="abre o QR Code do Pix"><button className="btn primary" onClick={()=>onPagar(n,per)}>Pagar com Pix</button></BtnCap></div></div>;}
 
 function BtnCap({cap,children}){return <div className="bcap">{children}<small className="cap">{cap}</small></div>;}
@@ -557,7 +558,7 @@ function FuncSelect({funcoes,value,onSelect,onCreate}){const [novo,setNovo]=useS
 function App(){
   const [S,setS]=useState(()=>loadLocal()||estadoInicial());
   const [user,setUser]=useState(null);const [authErro,setAuthErro]=useState("");const [authInfo,setAuthInfo]=useState("");const [authBusy,setAuthBusy]=useState(false);const [authPronto,setAuthPronto]=useState(!sb);
-  const [cloudSols,setCloudSols]=useState([]);const [verificando,setVerificando]=useState(false);const [recovery,setRecovery]=useState(false);const [novaSenha,setNovaSenha]=useState("");const [showAdmin,setShowAdmin]=useState(false);const [adminList,setAdminList]=useState(null);const [cort,setCort]=useState({email:"",n:1,meses:12,msg:""});
+  const [cloudSols,setCloudSols]=useState([]);const [verificando,setVerificando]=useState(false);const [recovery,setRecovery]=useState(false);const [novaSenha,setNovaSenha]=useState("");const [showAdmin,setShowAdmin]=useState(false);const [adminList,setAdminList]=useState(null);const [cort,setCort]=useState({email:"",n:2,meses:12,msg:""});
   const [showPlanos,setShowPlanos]=useState(false);const [newEq,setNewEq]=useState("");
   const [newProf,setNewProf]=useState("");const [holIn,setHolIn]=useState("");
   const [lv,setLv]=useState({id:"",tipo:"FE",a:1,b:1});
@@ -663,6 +664,14 @@ function App(){
   function addCert(pid){updEq(e=>({...e,profs:e.profs.map(p=>p.id===pid?{...p,dossie:{...(p.dossie||{}),certs:[...((p.dossie||{}).certs||[]),{nome:"",val:""}]}}:p)}));}
   function rmCert(pid,i){updEq(e=>({...e,profs:e.profs.map(p=>p.id===pid?{...p,dossie:{...(p.dossie||{}),certs:((p.dossie||{}).certs||[]).filter((_,j)=>j!==i)}}:p)}));}
   function carregarFeriados(){const lista=feriadosNacionais(ano,ferOpt);updEq(e=>{const hm={...(e.holidayMap||{})};lista.forEach(([m,d])=>{const k=ano+"-"+m;const arr=(hm[k]||[]).slice();if(!arr.includes(d))arr.push(d);hm[k]=arr.sort((x,y)=>x-y);});return {...e,holidayMap:hm};});}
+  function perfilEscala(tipo){updEq(e=>{
+    const fEnf=e.funcoes.find(f=>/enferm/i.test(f.nome)&&!/t[ée]cn|aux/i.test(f.nome));
+    const fTec=e.funcoes.find(f=>/t[ée]cn|aux/i.test(f.nome));
+    const c=JSON.parse(JSON.stringify(e.cover||{semana:{},fds:{}}));
+    e.turnos.filter(t=>t.auto).forEach(t=>["semana","fds"].forEach(dt=>{c[dt]=c[dt]||{};c[dt][t.code]=c[dt][t.code]||{};
+      if(tipo==="enf"){if(fTec)c[dt][t.code][fTec.id]=0;}
+      if(tipo==="tec"){if(fEnf)c[dt][t.code][fEnf.id]=0;}}));
+    return {...e,perfil:tipo,cover:c};});}
   function updDim(k,v){updEq(e=>({...e,dim:{...(e.dim||{}),[k]:v}}));}
   function aplicarDimensionamento(){const r=dimensionar(eq.dim||{});const fEnf=eq.funcoes.find(f=>/enferm/i.test(f.nome)&&!/t[ée]cn|aux/i.test(f.nome)),fTec=eq.funcoes.find(f=>/t[ée]cn|aux/i.test(f.nome));
     if(!fEnf&&!fTec){alert("Não encontrei funções 'Enfermeiro' e 'Técnico' nesta equipe.");return;}
@@ -767,13 +776,13 @@ function App(){
 
   // ---------- diagnóstico ----------
   const advice=useMemo(()=>{const out=[];if(eq.profs.length===0)return out;
-    const short=[];for(let d=1;d<=dim;d++)for(const t of autoTurnos)for(const f of eq.funcoes){const miss=req(d,t.code,f.id)-((coverage[d][t.code]||{})[f.id]||0);if(miss>0)short.push({d,t,f,miss});}
+    const short=[];for(let d=1;d<=dim;d++)for(const t of autoTurnos)for(const f of eq.funcoes){if(!(((((eq.cover||{}).semana||{})[t.code]||{})[f.id]||0)||((((eq.cover||{}).fds||{})[t.code]||{})[f.id]||0)))continue;const miss=req(d,t.code,f.id)-((coverage[d][t.code]||{})[f.id]||0);if(miss>0)short.push({d,t,f,miss});}
     if(short.length===0)out.push({sev:"ok",text:`Cobertura mínima atendida em todos os ${dim} dias.`});
     else{const shown=short.slice(0,4).map(s=>`dia ${s.d} (${WD[wdOf(ano,mes,s.d)]}): falta${s.miss>1?"m":""} ${s.miss} ${s.f.nome} no ${s.t.code}`);
       out.push({sev:"crit",text:`Faltam profissionais em ${new Set(short.map(s=>s.d)).size} dia(s) — ${shown.join("; ")}${short.length>4?`; e mais ${short.length-4} lacuna(s)`:""}.`});
       out.push({sev:"info",text:"O que fazer: escalar mais gente nesses dias, cadastrar profissionais, ou reduzir a exigência de cobertura."});}
     const maxShifts=eq.restRule?Math.floor((dim+1)/2):dim;
-    eq.funcoes.forEach(f=>{let demand=0;for(let d=1;d<=dim;d++)autoTurnos.forEach(t=>demand+=req(d,t.code,f.id));
+    eq.funcoes.forEach(f=>{let demand=0;for(let d=1;d<=dim;d++)autoTurnos.forEach(t=>demand+=req(d,t.code,f.id));if(demand===0)return;
       const n=eq.profs.filter(p=>p.funcaoId===f.id).length,supply=n*maxShifts;
       if(n===0&&demand>0){out.push({sev:"crit",text:`Nenhum(a) ${f.nome} cadastrado(a), mas a cobertura exige ${demand} plantões dessa função no mês.`});return;}
       if(demand>supply)out.push({sev:"warn",text:`${f.nome}: exigência de ${demand} plantões/mês acima da capacidade (~${supply}). Faltam ~${demand-supply} — contratar ${Math.ceil((demand-supply)/maxShifts)} ou reduzir cobertura.`});});
@@ -844,7 +853,7 @@ function App(){
 
   const pendTrocas=solsDe(eq.id,ym).filter(x=>x.status==="aguardando_coordenador").length;
   const diasDescobertos=eq.profs.length?days.filter(d=>autoTurnos.some(t=>eq.funcoes.some(f=>((coverage[d][t.code]||{})[f.id]||0)<req(d,t.code,f.id)))).length:0;
-  const NAV=[["panorama","🏠 Panorama",0],["escala","📅 Escala",diasDescobertos],["trocas","🔁 Trocas",pendTrocas],["equipe","👥 Equipe",0],["setor","⚙️ Setor",0],["docs","📄 Documentos",vencimentos.length],["indic","📊 Indicadores",0]];
+  const NAV=[["panorama","🏠 Panorama",0],["escala","📅 Escala",diasDescobertos],["trocas","🔁 Trocas",pendTrocas],["equipe","👥 Equipe",0],["setor","⚙️ Config. da escala",0],["docs","📄 Documentos",vencimentos.length],["indic","📊 Indicadores",0]];
   if(sb&&!authPronto)return <div className="land"><div className="empty">Carregando…</div></div>;
   if(sb&&recovery)return <div className="land"><div className="panel auth" style={{maxWidth:460,margin:"40px auto"}}><h2>Definir nova senha</h2>
     <div className="hint" style={{marginTop:0}}>Você entrou pelo link do e-mail. Escolha uma senha e <b>anote</b> — é ela que você usará para entrar depois, em qualquer celular ou computador.</div>
@@ -881,7 +890,7 @@ function App(){
         <div style={{display:"flex",gap:8,marginTop:12,alignItems:"center",flexWrap:"wrap"}}><button className="btn" disabled={verificando} onClick={recarregarPlano}>{verificando?"Verificando…":"Já paguei — verificar"}</button><span className="hint" style={{marginTop:0}}>Pagou o Pix? Clique — conferimos direto no Mercado Pago e liberamos na hora.</span><span style={{flex:1}}></span><button className="btn ghost" onClick={sairConta}>Sair</button></div></div></div>}
       {showPlanos&&<div className="overlay noprint" onClick={()=>setShowPlanos(false)}><div className="modal" onClick={e=>e.stopPropagation()}>
         <h2 style={{fontFamily:"'Space Grotesk'",margin:"0 0 6px"}}>Planos</h2>
-        <p style={{color:"var(--muted)",margin:"0 0 12px",fontSize:13}}>1 escala = 1 setor com escala mensal própria. Pagamento por Pix, semestral ou anual. {S.plano.vigenteAte?"Plano atual até "+new Date(S.plano.vigenteAte).toLocaleDateString("pt-BR")+"; renovar antes soma ao prazo.":""}</p>
+        <p style={{color:"var(--muted)",margin:"0 0 12px",fontSize:13}}>1 escala = 1 setor. Pagamento único por Pix (6 ou 12 meses), sem cobrança recorrente. {S.plano.vigenteAte?"Plano atual até "+new Date(S.plano.vigenteAte).toLocaleDateString("pt-BR")+"; renovar antes soma ao prazo.":""}</p>
         <PlanosBox n0={S.plano.limite||1} onPagar={pagar}/>
         {!online&&<div className="hint">Entre com sua conta (e-mail e senha) para contratar.</div>}
         <div style={{textAlign:"right",marginTop:12}}><button className="btn" onClick={()=>setShowPlanos(false)}>Fechar</button></div></div></div>}
@@ -922,7 +931,7 @@ function App(){
           <div className="kpi" onClick={()=>setSecao("equipe")}><div className="k">Código do setor (equipe)</div><div className="v" style={{fontSize:18}}>{eq.codigo}</div><div className="s">a equipe entra com este código + PIN</div></div>
           <div className="kpi" onClick={()=>setShowPlanos(true)}><div className="k">Escalas no plano</div><div className="v">{S.equipes.length}/{S.plano.limite}</div><div className="s">turnos: {eq.turnos.map(t=>t.code).join(", ")}</div></div>
         </div>
-        <div className="hint">Clique num cartão para ir à seção. O gerador, a grade e o diagnóstico ficam em <b>Escala</b>; cadastro e férias em <b>Equipe</b>; turnos, funções, cobertura e dimensionamento em <b>Setor</b>.</div></div>
+        <div className="hint">Clique num cartão para ir à seção. O gerador, a grade e o diagnóstico ficam em <b>Escala</b>; cadastro e férias em <b>Equipe</b>; turnos, funções, cobertura e dimensionamento em <b>Config. da escala</b>.</div></div>
 
       <div className="tabs noprint">
         <span className="hint" style={{marginTop:0}}>Setores:</span>
@@ -968,6 +977,11 @@ function App(){
         <div className="hint">Com "gerador preenche" marcado, o turno aparece na cobertura e você diz quantas pessoas por dia; cobertura 0 = ninguém é escalado automaticamente (você pode colocar à mão). Desmarcado, o turno é só manual.</div></div>
 
       <div className="panel noprint" data-sec="setor"><h2>Funções e cobertura exigida <span className="sp"></span><button className="btn sm" onClick={addFunc}>+ função</button></h2>
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
+          <span style={{fontSize:13,fontWeight:600}}>Esta escala é de:</span>
+          {[["enf","Só enfermeiros"],["tec","Só técnicos"],["misto","Misto (enf + téc)"]].map(([k,l])=>
+            <button key={k} className={"btn sm"+(eq.perfil===k?" primary":"")} onClick={()=>perfilEscala(k)}>{l}</button>)}
+          <span className="hint" style={{marginTop:0}}>ajusta a cobertura abaixo automaticamente · você pode refinar os números</span></div>
         <div className="row" style={{alignItems:"flex-start"}}>
           <div style={{minWidth:220}}>{eq.funcoes.map((f,i)=><div key={f.id} style={{display:"flex",gap:6,marginBottom:6}}><input value={f.nome} onChange={e=>updFunc(i,e.target.value)} style={{flex:1,border:"1px solid var(--line)",borderRadius:7,padding:"5px 8px"}}/><button className="btn ghost sm" onClick={()=>rmFunc(i)}>×</button></div>)}</div>
           {[["semana","Dias de semana",""],["fds","Fim de semana / feriado","hl"]].map(([dt,lbl,cls])=><div className={"group "+cls} key={dt}><div className="glab">{lbl}</div>
@@ -1091,7 +1105,7 @@ function App(){
             {days.map(d=>{const c=resumoDia[d].plantao;return <td key={d} className={(isHol(d)?"hol ":isWknd(ano,mes,d)?"wknd ":"")+(c===0&&eq.profs.length?"zero":"")}>{c}</td>;})}<td className="tot-col"></td></tr>
           <tr className="sum"><td className="name-col cov-lbl">Folga / afastados</td>
             {days.map(d=><td key={d} className={isHol(d)?"hol":isWknd(ano,mes,d)?"wknd":""} style={{color:"var(--muted)"}}>{resumoDia[d].fora||""}</td>)}<td className="tot-col"></td></tr>
-          {autoTurnos.map(t=>eq.funcoes.map(f=><tr key={t.code+f.id}>
+          {autoTurnos.map(t=>eq.funcoes.filter(f=>((((eq.cover||{}).semana||{})[t.code]||{})[f.id]||0)>0||((((eq.cover||{}).fds||{})[t.code]||{})[f.id]||0)>0).map(f=><tr key={t.code+f.id}>
           <td className="name-col cov-lbl">{t.code} {f.nome.slice(0,10)} <small>· sem {(((eq.cover||{}).semana||{})[t.code]||{})[f.id]||0} / fds {(((eq.cover||{}).fds||{})[t.code]||{})[f.id]||0}</small></td>
           {days.map(d=>{const c=(coverage[d][t.code]||{})[f.id]||0;const need=req(d,t.code,f.id);return <td key={d} className={(isHol(d)?"hol ":isWknd(ano,mes,d)?"wknd ":"")+(c<need?"under":"")}>{c||""}</td>;})}
           <td className="tot-col"></td></tr>))}</tfoot></table>}
