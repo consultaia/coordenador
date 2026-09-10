@@ -264,7 +264,8 @@ function gerarEscala({y,m,eq,ym}){
   const turnoH={};eq.turnos.forEach(t=>turnoH[t.code]=t.horas);
   const autoTurnos=eq.turnos.filter(t=>t.auto);const autoCodes=new Set(autoTurnos.map(t=>t.code));
   const cur=(eq.sched||{})[ym]||{};const next={};eq.profs.forEach(p=>next[p.id]={});
-  eq.profs.forEach(p=>{const r=cur[p.id]||{};for(const d in r){const v=r[d];if(v&&v!=="F"&&!autoCodes.has(v))next[p.id][d]=v;}});
+  const travas=eq.travas||{};
+  eq.profs.forEach(p=>{const r=cur[p.id]||{};for(const d in r){const v=r[d];if(v&&v!=="F"&&(!autoCodes.has(v)||travas[ym+"|"+p.id+"|"+d]))next[p.id][d]=v;}});
   const ds=eq.diasSemana||6;
   const alvoAbat=p=>{let dc=0;for(let d=1;d<=dim;d++){const w=wdOf(y,m,d);const off=ds>=6?w===0:(w===0||w===6);if(off||hol.includes(d))continue;const v=(cur[p.id]||{})[d];if(abateAlvo(v,!!turnoH[v]))continue;dc++;}return Math.round((p.weekly||0)/ds*dc);};
   const tgt={},hrs={},dia={},noi={},fds={},fer={};
@@ -660,6 +661,7 @@ function App(){
   useEffect(()=>{if(S.equipes.some(e=>!(e.turnos||[]).some(t=>t.code==="PL")))
     upd(s=>({...s,equipes:s.equipes.map(e=>(e.turnos||[]).some(t=>t.code==="PL")?e:{...e,turnos:[...(e.turnos||[]),{code:"PL",nome:"Plantão 24h",horas:24,periodo:"dia",auto:false}]})}));},[S.equipes.length]);
   useEffect(()=>{saveLocal(S);if(cloudLoaded.current)persistCloud(user,S);},[S,user]);
+  useEffect(()=>{if(!sb||!user)return;const h=()=>{clearTimeout(_t);try{const ts=new Date().toISOString();sb.from("estados").upsert({user_id:user.id,dados:{...S,_ts:ts},atualizado_em:ts}).then(()=>{});}catch(e){}};window.addEventListener("beforeunload",h);return()=>window.removeEventListener("beforeunload",h);},[S,user]);
   async function entrar(email,senha){if(!sb)return;setAuthErro("");setAuthBusy(true);const {error}=await sb.auth.signInWithPassword({email,password:senha});setAuthBusy(false);if(error)setAuthErro(error.message==="Invalid login credentials"?"E-mail ou senha incorretos.":error.message);}
   async function criarConta(email,senha){if(!sb)return;setAuthErro("");setAuthInfo("");if(!senha||senha.length<6){setAuthErro("Senha com pelo menos 6 caracteres.");return;}setAuthBusy(true);
     const {data,error}=await sb.auth.signUp({email,password:senha,options:{emailRedirectTo:location.href.split("#")[0]}});setAuthBusy(false);
@@ -676,6 +678,8 @@ function App(){
   const upd=fn=>setS(s=>fn({...s}));
   const updEq=fn=>setS(s=>({...s,equipes:s.equipes.map(e=>e.id===s.ativa?fn({...e}):e)}));
   const setSched=fn=>updEq(e=>{const all={...(e.sched||{})};all[ym]=fn({...(all[ym]||{})});return {...e,sched:all};});
+  function toggleTrava(pid,d){updEq(e=>{const tv={...(e.travas||{})};const k=ym+"|"+pid+"|"+d;if(tv[k])delete tv[k];else tv[k]=1;return {...e,travas:tv};});}
+  const travada=(pid,d)=>!!((eq.travas||{})[ym+"|"+pid+"|"+d]);
   function setCell(pid,d,code){setSched(sc=>{const r={...(sc[pid]||{})};if(code)r[d]=code;else delete r[d];return {...sc,[pid]:r};});}
   function mudarMes(k){let m=mes+k,y=ano;if(m<0){m=11;y--;}if(m>11){m=0;y++;}upd(s=>({...s,mes:m,ano:y}));}
   function addEquipe(){const n=newEq.trim();if(!n)return;if(S.equipes.length>=S.plano.limite){setShowPlanos(true);return;}
@@ -802,6 +806,10 @@ function App(){
   function rmProf(id){updEq(e=>{const sc={...(e.sched||{})};for(const k in sc){sc[k]={...sc[k]};delete sc[k][id];}return {...e,profs:e.profs.filter(p=>p.id!==id),sched:sc};});}
   function aplicarAfast(){if(!lv.id)return;const a=Math.min(lv.a,lv.b),b=Math.max(lv.a,lv.b);setSched(sc=>{const r={...(sc[lv.id]||{})};for(let d=a;d<=b;d++)r[d]=lv.tipo;return {...sc,[lv.id]:r};});}
   function gerar(){if(!liberado){setShowPlanos(true);return;}const next=gerarEscala({y:ano,m:mes,eq,ym});setSched(()=>next);}
+  function copiarMesAnterior(){let m2=mes-1,y2=ano;if(m2<0){m2=11;y2--;}const k=y2+"-"+m2;const prev=(eq.sched||{})[k];
+    if(!prev||!Object.keys(prev).length){alert("Não há escala em "+MESES[m2]+"/"+y2+" para copiar.");return;}
+    if(Object.keys(sched).length&&!confirm("Substituir a escala atual pela cópia de "+MESES[m2]+"/"+y2+"? (dias além do fim do mês são descartados)"))return;
+    const copy={};for(const pid in prev){copy[pid]={};for(const d in prev[pid])if(+d<=dim)copy[pid][d]=prev[pid][d];}setSched(()=>copy);}
   function limpar(){const autoCodes=new Set(autoTurnos.map(t=>t.code));setSched(sc=>{const n={};for(const id in sc){n[id]={};for(const d in sc[id]){const v=sc[id][d];if(v&&v!=="F"&&!autoCodes.has(v))n[id][d]=v;}}return n;});}
   function cellClass(code){if(!code)return "";const t=turnoMap[code];if(t)return t.periodo==="noite"?"k-noite":(t.horas>=12?"k-dia":"k-curto");
     if(code==="F")return "k-F";if(code==="FE")return "k-FE";return "k-lic";}
@@ -895,7 +903,8 @@ ${t.outerHTML}
   function exportJSON(){const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="coordenador-backup.json";a.click();}
   useEffect(()=>{const li=document.getElementById("logoInput"),ji=document.getElementById("jsonInput");
     const lh=e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>upd(s=>({...s,org:{...s.org,logo:ev.target.result}}));r.readAsDataURL(f);}e.target.value="";};
-    const jh=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const s=JSON.parse(ev.target.result);if(s.equipes)setS(s);else alert("Arquivo inválido.");}catch(err){alert("Arquivo inválido.");}};r.readAsText(f);e.target.value="";};
+    const jh=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const s=JSON.parse(ev.target.result);if(!s.equipes){alert("Arquivo inválido.");return;}
+        if(!confirm("Restaurar este backup vai SUBSTITUIR os dados atuais (setores, equipes e escalas) — inclusive na nuvem. Continuar?"))return;setS({...s,_ts:new Date().toISOString()});}catch(err){alert("Arquivo inválido.");}};r.readAsText(f);e.target.value="";};
     li.addEventListener("change",lh);ji.addEventListener("change",jh);return()=>{li.removeEventListener("change",lh);ji.removeEventListener("change",jh);};});
   async function pagar(n,periodo){if(!PAY_ENDPOINT){alert(`${n} escala(s) · ${periodo===12?"anual":"semestral"}: ${fmtR(PRECO(n,periodo))}.\nPagamento Pix será ativado quando o Worker estiver configurado.`);return;}
     if(!sb||!user){alert("Entre com sua conta antes de pagar.");return;}
@@ -980,11 +989,11 @@ ${t.outerHTML}
           <BtnCap cap={online?"o que a equipe vê no celular":"tela do profissional (PIN)"}><button className="btn" onClick={()=>setModo(online?"portal_online":"portal")}>👤 Portal</button></BtnCap>
           {ehAdmin&&<BtnCap cap="liberar cortesias"><button className="btn" onClick={()=>{setShowAdmin(true);carregarAdminLista();}}>🎁 Admin</button></BtnCap>}
           {online&&<BtnCap cap={user.email}><button className="btn ghost" onClick={sairConta}>Sair</button></BtnCap>}
-          <BtnCap cap={S.org.coordPinHash?"PIN do coordenador ativo":"proteger volta do portal"}><button className="btn" onClick={definirPinCoord}>{S.org.coordPinHash?"🔒":"🔓"}</button></BtnCap>
+          {!online&&<BtnCap cap={S.org.coordPinHash?"PIN do coordenador ativo":"proteger volta do portal"}><button className="btn" onClick={definirPinCoord}>{S.org.coordPinHash?"🔒":"🔓"}</button></BtnCap>}
           <BtnCap cap="assinatura e limites"><button className="btn" onClick={()=>setShowPlanos(true)}>Planos</button></BtnCap>
           <BtnCap cap="restaura um .json baixado em Salvar"><button className="btn" onClick={()=>document.getElementById("jsonInput").click()}>Abrir backup</button></BtnCap>
           <BtnCap cap="baixa um .json com tudo"><button className="btn" onClick={exportJSON}>Salvar backup</button></BtnCap>
-          <BtnCap cap="grade em PDF/papel"><button className="btn" onClick={imprimirEscala}>Imprimir</button></BtnCap>
+          <BtnCap cap="grade em PDF/papel"><button id="btn-imprimir" className="btn" onClick={imprimirEscala}>Imprimir</button></BtnCap>
           <BtnCap cap="planilha do mês"><button className="btn" onClick={exportExcel}>Excel</button></BtnCap>
           <BtnCap cap="preenche o mês automaticamente"><button className="btn primary" onClick={gerar}>⚡ Gerar escala</button></BtnCap>
         </div>
@@ -1154,7 +1163,7 @@ ${t.outerHTML}
           <div className="field"><label>Do dia</label><input type="number" min="1" max={dim} value={lv.a} onChange={e=>setLv({...lv,a:+e.target.value||1})}/></div>
           <div className="field"><label>Até o dia</label><input type="number" min="1" max={dim} value={lv.b} onChange={e=>setLv({...lv,b:+e.target.value||1})}/></div>
           <button className="btn primary" onClick={aplicarAfast}>Aplicar</button></div>
-        <div className="hint">Afastamentos e turnos manuais são preservados ao clicar em “Gerar escala”.</div></div>
+        <div className="hint">Afastamentos e turnos manuais são preservados ao clicar em “Gerar escala”. Para fixar um SD/SN específico, <b>clique com o botão direito</b> na célula (fica com borda verde) — o gerador não mexe nele.</div></div>
 
       <div data-sec="equipe"><PainelFerias eq={eq} ano={ano} onAdd={addFer} onUpd={updFer} onRm={rmFer} onAplicar={aplicarFerias}/></div>
 
@@ -1172,7 +1181,7 @@ ${t.outerHTML}
                 <td className="print-coren mono" style={{fontSize:9,padding:"0 4px"}}>{(p.dossie||{}).coren||""}</td>
             {days.map(d=>{const code=(verOriginal&&orig?((orig.sched[p.id]||{})[d]||""):(r[d]||""));return <td key={d} className={isHol(d)?"hol":isWknd(ano,mes,d)?"wknd":""}>
               {verOriginal&&orig?<div className={"chip "+cellClass(code)} style={{width:"100%",borderRadius:0,height:36}}>{code||"·"}</div>:
-              <React.Fragment><span className="cell-print" style={{display:"none"}}>{code||""}</span><select className={"cell-sel "+cellClass(code)} value={code} onChange={e=>setCell(p.id,d,e.target.value)}>
+              <React.Fragment><span className="cell-print" style={{display:"none"}}>{code||""}</span><select className={"cell-sel "+cellClass(code)} value={code} onChange={e=>setCell(p.id,d,e.target.value)} onContextMenu={e=>{e.preventDefault();toggleTrava(p.id,d);}} title={travada(p.id,d)?"Travado: o gerador não altera (clique direito para destravar)":"Clique direito para travar este plantão"} style={travada(p.id,d)?{boxShadow:"inset 0 0 0 2px var(--teal)"}:{}}>
                 <option value="">·</option><optgroup label="Turnos">{eq.turnos.map(t=><option key={t.code} value={t.code}>{t.code}</option>)}</optgroup>
                 <optgroup label="Licenças">{S.licencas.map(l=><option key={l.code} value={l.code}>{l.code}</option>)}</optgroup></select></React.Fragment>}</td>;})}
             <td className="tot-col"><div className="tot-wrap" style={{flexDirection:"column",alignItems:"flex-end",gap:1,height:"auto",padding:"3px 12px"}}><div style={{display:"flex",gap:8,alignItems:"center"}}><span className="tot-h mono">{h}h</span>{pill(h,t)}</div>
@@ -1210,7 +1219,8 @@ ${t.outerHTML}
       <div className="legend noprint print-show" data-sec="escala" data-flex="1">
         {eq.turnos.map(t=><span key={t.code}><i className={"chip "+cellClass(t.code)}>{t.code}</i>{t.nome} {t.horas}h</span>)}
         {S.licencas.map(l=><span key={l.code}><i className={"chip "+cellClass(l.code)}>{l.code}</i>{l.nome}</span>)}
-        <BtnCap cap="mantém licenças e turnos manuais"><button className="btn ghost sm" style={{marginLeft:"auto"}} onClick={limpar}>Limpar plantões automáticos</button></BtnCap>
+        <BtnCap cap="usa o mês passado como ponto de partida"><button className="btn sm" style={{marginLeft:"auto"}} onClick={copiarMesAnterior}>Copiar mês anterior</button></BtnCap>
+        <BtnCap cap="mantém licenças e turnos manuais"><button className="btn ghost sm" onClick={limpar}>Limpar plantões automáticos</button></BtnCap>
       </div>
 
       {eq.profs.length>0&&<div style={{marginTop:14}} data-sec="trocas"><PainelTroca eq={eq} sched={sched} turnoMap={turnoMap} dim={dim} onTrocar={trocar} log={((eq.trocas||{})[ym])||[]}/></div>}
@@ -1255,6 +1265,7 @@ ${t.outerHTML}
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+window.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&(e.key==="p"||e.key==="P")){const b=document.getElementById("btn-imprimir");if(b){e.preventDefault();b.click();}}});
 window.addEventListener("beforeprint",()=>{document.querySelectorAll(".print-show").forEach(el=>{let a=el.parentElement;while(a&&!a.classList.contains("wrap")){a.classList.add("print-keep");a=a.parentElement;}});document.body.classList.add("printing");});
 window.addEventListener("afterprint",()=>{document.body.classList.remove("printing");document.querySelectorAll(".print-keep").forEach(el=>el.classList.remove("print-keep"));});
 </script>
