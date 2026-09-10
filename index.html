@@ -674,21 +674,6 @@ function App(){
   function addCert(pid){updEq(e=>({...e,profs:e.profs.map(p=>p.id===pid?{...p,dossie:{...(p.dossie||{}),certs:[...((p.dossie||{}).certs||[]),{nome:"",val:""}]}}:p)}));}
   function rmCert(pid,i){updEq(e=>({...e,profs:e.profs.map(p=>p.id===pid?{...p,dossie:{...(p.dossie||{}),certs:((p.dossie||{}).certs||[]).filter((_,j)=>j!==i)}}:p)}));}
   function carregarFeriados(){const lista=feriadosNacionais(ano,ferOpt);updEq(e=>{const hm={...(e.holidayMap||{})};lista.forEach(([m,d])=>{const k=ano+"-"+m;const arr=(hm[k]||[]).slice();if(!arr.includes(d))arr.push(d);hm[k]=arr.sort((x,y)=>x-y);});return {...e,holidayMap:hm};});}
-  function perfilEscala(tipo){updEq(e=>{
-    let funcoes=e.funcoes.slice();
-    const acha=(re,not)=>funcoes.find(f=>re.test(f.nome)&&(!not||!not.test(f.nome)));
-    let fEnf=acha(/enferm/i,/t[ée]cn|aux/i), fTec=acha(/t[ée]cn|aux/i);
-    // garante a função necessária existir
-    if((tipo==="enf"||tipo==="misto")&&!fEnf){fEnf={id:uid(),nome:"Enfermeiro"};funcoes=[...funcoes,fEnf];}
-    if((tipo==="tec"||tipo==="misto")&&!fTec){fTec={id:uid(),nome:"Técnico"};funcoes=[...funcoes,fTec];}
-    const c=JSON.parse(JSON.stringify(e.cover||{semana:{},fds:{}}));
-    const setCov=(fid,semSD,semSN,fdsSD,fdsSN)=>{e.turnos.filter(t=>t.auto).forEach(t=>["semana","fds"].forEach(dt=>{c[dt]=c[dt]||{};c[dt][t.code]=c[dt][t.code]||{};}));
-      if(!fid)return;const put=(dt,tc,v)=>{c[dt]=c[dt]||{};c[dt][tc]=c[dt][tc]||{};c[dt][tc][fid]=v;};
-      put("semana","SD",semSD);put("semana","SN",semSN);put("fds","SD",fdsSD);put("fds","SN",fdsSN);};
-    if(tipo==="enf"){setCov(fEnf&&fEnf.id,1,1,1,1);setCov(fTec&&fTec.id,0,0,0,0);}
-    if(tipo==="tec"){setCov(fTec&&fTec.id,1,1,1,1);setCov(fEnf&&fEnf.id,0,0,0,0);}
-    if(tipo==="misto"){setCov(fEnf&&fEnf.id,1,1,1,1);setCov(fTec&&fTec.id,2,2,1,1);}
-    return {...e,perfil:tipo,funcoes,cover:c};});}
   function updDim(k,v){updEq(e=>({...e,dim:{...(e.dim||{}),[k]:v}}));}
   function aplicarDimensionamento(){const r=dimensionar(eq.dim||{});const fEnf=eq.funcoes.find(f=>/enferm/i.test(f.nome)&&!/t[ée]cn|aux/i.test(f.nome)),fTec=eq.funcoes.find(f=>/t[ée]cn|aux/i.test(f.nome));
     if(!fEnf&&!fTec){alert("Não encontrei funções 'Enfermeiro' e 'Técnico' nesta equipe.");return;}
@@ -994,11 +979,7 @@ function App(){
         <div className="hint">Com "gerador preenche" marcado, o turno aparece na cobertura e você diz quantas pessoas por dia; cobertura 0 = ninguém é escalado automaticamente (você pode colocar à mão). Desmarcado, o turno é só manual.</div></div>
 
       <div className="panel noprint" data-sec="setor"><h2>Funções e cobertura exigida <span className="sp"></span><button className="btn sm" onClick={addFunc}>+ função</button></h2>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
-          <span style={{fontSize:13,fontWeight:600}}>Esta escala é de:</span>
-          {[["enf","Só enfermeiros"],["tec","Só técnicos"],["misto","Misto (enf + téc)"]].map(([k,l])=>
-            <button key={k} className={"btn sm"+(eq.perfil===k?" primary":"")} onClick={()=>perfilEscala(k)}>{l}</button>)}
-          <span className="hint" style={{marginTop:0}}>ajusta a cobertura abaixo automaticamente · você pode refinar os números</span></div>
+        <div className="hint" style={{marginTop:0,marginBottom:10}}>Escala de uma função só? Deixe as funções que não usa com cobertura <b>0</b> em todos os turnos, ou remova a função no × ao lado do nome. O que estiver zerado não aparece na cobertura, no diagnóstico nem na impressão.</div>
         <div className="row" style={{alignItems:"flex-start"}}>
           <div style={{minWidth:220}}>{eq.funcoes.map((f,i)=><div key={f.id} style={{display:"flex",gap:6,marginBottom:6}}><input value={f.nome} onChange={e=>updFunc(i,e.target.value)} style={{flex:1,border:"1px solid var(--line)",borderRadius:7,padding:"5px 8px"}}/><button className="btn ghost sm" onClick={()=>rmFunc(i)}>×</button></div>)}</div>
           {[["semana","Dias de semana",""],["fds","Fim de semana / feriado","hl"]].map(([dt,lbl,cls])=><div className={"group "+cls} key={dt}><div className="glab">{lbl}</div>
