@@ -47,6 +47,9 @@ button{font-family:inherit;cursor:pointer}input,select{font-family:inherit;font-
 .topbar{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-bottom:14px;flex-wrap:wrap}
 .logo-slot{width:60px;height:60px;flex:none;border:2px dashed var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafa;cursor:pointer}
 .logo-slot:hover{border-color:var(--teal)}.logo-slot img{width:100%;height:100%;object-fit:contain}.logo-slot span{font-size:10px;color:var(--muted)}
+.logo-wrap{position:relative;width:60px;height:60px;flex:none}
+.logo-x{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:var(--bad);color:#fff;border:2px solid #fff;font-size:12px;line-height:1;display:none;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.logo-wrap:hover .logo-x{display:flex}
 .brand{flex:1;min-width:200px}.brand .unit{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;border:none;background:transparent;color:var(--ink);width:100%;padding:2px 0}
 .brand .unit:focus{outline:none;border-bottom:1px solid var(--teal)}.brand .title{font-size:11px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
 .badge{font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px;white-space:nowrap}
@@ -914,7 +917,7 @@ function App(){
         <div style={{textAlign:"right",marginTop:12}}><button className="btn" onClick={()=>setShowPlanos(false)}>Fechar</button></div></div></div>}
 
       <div className="topbar">
-        <div className="logo-slot" onClick={()=>document.getElementById("logoInput").click()} title="Enviar logo">{S.org.logo?<img src={S.org.logo} alt="logo"/>:<span>+ logo</span>}</div>
+        <div className="logo-wrap noprint"><div className="logo-slot" onClick={()=>document.getElementById("logoInput").click()} title={S.org.logo?"Trocar logo":"Enviar logo"}>{S.org.logo?<img src={S.org.logo} alt="logo"/>:<span>+ logo</span>}</div>{S.org.logo&&<button className="logo-x" title="Remover logo" onClick={e=>{e.stopPropagation();if(confirm("Remover a logo?"))upd(x=>({...x,org:{...x.org,logo:null}}));}}>×</button>}</div>
         <div className="brand"><input className="unit" value={S.org.nome} onChange={e=>upd(s=>({...s,org:{...s.org,nome:e.target.value}}))}/><div className="title">Coordenador · {eq.nome} · {MESES[mes]}/{ano}</div></div>
         <div className="noprint">{badge}</div>
         <div className="actions noprint">
