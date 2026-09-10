@@ -848,6 +848,50 @@ function App(){
       if(diferencas.length){ao.push([]);ao.push(["Diferenças (original → atual)"]);diferencas.forEach(x=>ao.push([x.nome,"dia "+x.d,x.de+" → "+x.para]));}
       const wo=XLSX.utils.aoa_to_sheet(ao);wo["!cols"]=[{wch:22},...Array(dim).fill({wch:4})];XLSX.utils.book_append_sheet(wb,wo,"Original");}
     XLSX.writeFile(wb,"escala-"+eq.nome.toLowerCase().replace(/\s+/g,"-")+"-"+MESES[mes].toLowerCase()+"-"+ano+".xlsx");}
+  function imprimirEscala(){
+    const srcTable=document.querySelector(".grid-scroll table.sched");
+    if(!srcTable||eq.profs.length===0){alert("Gere a escala antes de imprimir.");return;}
+    const t=srcTable.cloneNode(true);
+    // células: troca <select> pelo texto, remove controles
+    t.querySelectorAll("select.cell-sel").forEach(sel=>{const d=document.createElement("div");d.className="cp "+(sel.className.replace("cell-sel","").trim());d.textContent=sel.value||"·";sel.replaceWith(d);});
+    t.querySelectorAll(".cell-print,.noprint,.bcap,button").forEach(el=>el.remove());
+    t.querySelectorAll(".print-coren").forEach(el=>{el.style.display="table-cell";});
+    const cls=code=>{const tt=turnoMap[code];if(tt)return tt.periodo==="noite"?"k-noite":(tt.horas>=12?"k-dia":"k-curto");return code==="F"?"k-F":code==="FE"?"k-FE":code?"k-lic":"";};
+    const legend=[...eq.turnos.map(x=>`<span><i class="chip ${cls(x.code)}">${x.code}</i>${x.nome} ${x.horas}h</span>`),...S.licencas.map(l=>`<span><i class="chip ${cls(l.code)}">${l.code}</i>${l.nome}</span>`)].join("");
+    const esc=v=>String(v||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    const versao=verOriginal&&orig?"versão ORIGINAL publicada em "+orig.em:orig?"versão atual (original publicada em "+orig.em+")":"";
+    const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Escala ${esc(eq.nome)} — ${MESES[mes]}/${ano}</title>
+<style>
+@page{size:A4 landscape;margin:7mm}
+body{font-family:Inter,Arial,sans-serif;color:#000;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:9px}
+.head{display:flex;align-items:center;gap:14px;margin-bottom:6px}.head img{height:44px;max-width:120px;object-fit:contain}
+.t1{font-weight:700;font-size:15px}.t2{font-size:10px;color:#333}
+table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:8px}
+th,td{border:1px solid #999;padding:0;text-align:center;white-space:nowrap;overflow:hidden}
+thead th{background:#eee;font-size:8px;padding:2px 0}.dwd{font-size:7px;text-transform:uppercase}.dnum{font-family:monospace;font-size:8px;font-weight:700}.fer{font-size:6px;color:#c00;font-weight:700}
+th.hol,td.hol{background:#fde8e8}th.wknd,td.wknd{background:#f3f3f3}
+.name-col{text-align:left;padding:1px 4px;width:112px;border-right:2px solid #666}.nm-main{font-weight:700;font-size:8.5px}.nm-tags{font-size:6px;color:#444;font-family:monospace}
+.print-coren{width:62px;font-family:monospace;font-size:8px}
+.cp{height:16px;line-height:16px;font-family:monospace;font-weight:700;font-size:8px}
+.k-dia{background:#fef3c7;color:#b45309}.k-noite{background:#e0e7ff;color:#3730a3}.k-curto{background:#e0f2fe;color:#0369a1}
+.k-F{background:#eef2f5;color:#64748b}.k-FE{background:#ccfbf1;color:#0f766e}.k-lic{background:#ede9fe;color:#7c3aed}
+.tot-col{width:64px;border-left:2px solid #666}.tot-wrap{display:flex;flex-direction:column;align-items:flex-end;padding:0 3px}.tot-h{font-family:monospace;font-weight:700;font-size:8px}
+.pill{font-family:monospace;font-size:6px;font-weight:700;padding:0 3px;border-radius:8px}.p-ok{background:#dcfce7;color:#15803d}.p-warn{background:#fef3c7;color:#b45309}.p-bad{background:#fee2e2;color:#b91c1c}
+tfoot td{background:#f5f5f5;font-family:monospace;font-size:7px;height:12px}tfoot .cov-lbl{text-align:right;padding-right:6px;font-family:Inter,Arial,sans-serif;font-weight:700}tfoot td.under{background:#fee2e2;color:#b91c1c}
+tfoot tr.sum td{background:#e9f1f1}tfoot td.zero{color:#b91c1c;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:8px}.chip{display:inline-flex;align-items:center;justify-content:center;width:20px;height:11px;border-radius:3px;font-family:monospace;font-weight:700;font-size:6px;margin-right:3px}
+.obs{margin-top:8px;border:1px solid #999;padding:6px 8px;min-height:38px;white-space:pre-wrap;font-size:9px}.obs b{font-size:8px;letter-spacing:.05em}
+.assina{display:flex;justify-content:space-around;gap:30px;margin-top:26px}.a{flex:1;text-align:center;font-size:9px}.ln{border-top:1px solid #000;margin:0 10px 3px;padding-top:3px}
+</style></head><body>
+<div class="head">${S.org.logo?`<img src="${S.org.logo}">`:""}<div><div class="t1">${esc(S.org.nome)} — ${esc(eq.nome)}</div><div class="t2">Escala de ${MESES[mes]}/${ano} · ${eq.profs.length} profissionais${versao?" · "+versao:""} · impresso em ${new Date().toLocaleDateString("pt-BR")}</div></div></div>
+${t.outerHTML}
+<div class="obs"><b>OBSERVAÇÕES</b>\n${esc(eq.obs)}</div>
+<div class="assina"><div class="a"><div class="ln">&nbsp;</div>${esc(eq.assinaturaNome||"Responsável")}<br><span style="color:#555">${esc(eq.assinaturaCargo)}</span></div>${eq.assinatura2?`<div class="a"><div class="ln">&nbsp;</div>${esc(eq.assinatura2)}</div>`:""}<div class="a"><div class="ln">&nbsp;</div>${esc(S.org.nome)} · ${MESES[mes]}/${ano}<br><span style="color:#555">Emitido em ${new Date().toLocaleDateString("pt-BR")}</span></div></div>
+<div class="legend">${legend}</div>
+<script>window.onload=()=>{setTimeout(()=>{window.print();},150);};<\/script></body></html>`;
+    const ifr=document.createElement("iframe");ifr.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0;";document.body.appendChild(ifr);
+    const doc=ifr.contentWindow.document;doc.open();doc.write(html);doc.close();
+    ifr.contentWindow.onafterprint=()=>{setTimeout(()=>ifr.remove(),500);};setTimeout(()=>{if(document.body.contains(ifr))ifr.remove();},60000);}
   function exportJSON(){const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="coordenador-backup.json";a.click();}
   useEffect(()=>{const li=document.getElementById("logoInput"),ji=document.getElementById("jsonInput");
     const lh=e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>upd(s=>({...s,org:{...s.org,logo:ev.target.result}}));r.readAsDataURL(f);}e.target.value="";};
@@ -940,7 +984,7 @@ function App(){
           <BtnCap cap="assinatura e limites"><button className="btn" onClick={()=>setShowPlanos(true)}>Planos</button></BtnCap>
           <BtnCap cap="restaura um .json baixado em Salvar"><button className="btn" onClick={()=>document.getElementById("jsonInput").click()}>Abrir backup</button></BtnCap>
           <BtnCap cap="baixa um .json com tudo"><button className="btn" onClick={exportJSON}>Salvar backup</button></BtnCap>
-          <BtnCap cap="grade em PDF/papel"><button className="btn" onClick={()=>window.print()}>Imprimir</button></BtnCap>
+          <BtnCap cap="grade em PDF/papel"><button className="btn" onClick={imprimirEscala}>Imprimir</button></BtnCap>
           <BtnCap cap="planilha do mês"><button className="btn" onClick={exportExcel}>Excel</button></BtnCap>
           <BtnCap cap="preenche o mês automaticamente"><button className="btn primary" onClick={gerar}>⚡ Gerar escala</button></BtnCap>
         </div>
