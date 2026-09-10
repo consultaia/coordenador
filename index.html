@@ -26,6 +26,7 @@
   const SUPABASE_ANON_KEY = "sb_publishable_KhmIwvVbXtecadyEPrBonQ_ZUTQVLRP";
   const WORKER_URL = "https://coordenador.janan-almeida.workers.dev";   // ex.: https://coordenador-worker.SEU-SUB.workers.dev  (sem barra no fim)
   const PAY_ENDPOINT = WORKER_URL ? WORKER_URL + "/pix" : "";
+  const APP_VERSION = "2026.09.10-c";
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -236,7 +237,8 @@ const estadoInicial=()=>{const e=novaEquipe("Setor 1");const n=new Date();
 
 // ---------- persistência ----------
 const KEY="coordenador_v1";
-const keyFor=uid=>KEY+(uid?":"+uid:"");           // espelho local SEPARADO por usuário — nunca vaza entre contas
+const keyFor=uid=>KEY+(uid?":"+uid:"");
+try{if(SUPABASE_URL)localStorage.removeItem(KEY);}catch(e){} // modo online: descarta o espelho legado sem dono           // espelho local SEPARADO por usuário — nunca vaza entre contas
 const loadLocal=(uid)=>{try{const r=localStorage.getItem(keyFor(uid));return r?JSON.parse(r):null;}catch(e){return null;}};
 const saveLocal=(s,uid)=>{try{localStorage.setItem(keyFor(uid),JSON.stringify(s));}catch(e){}};
 let _t=null;
@@ -519,7 +521,7 @@ function Landing({onEntrar,onCriar,onReset,onPortal,erro,info,busy}){const [emai
       <details><summary>É seguro?</summary><p>Cada coordenador só enxerga os próprios dados. As senhas e os PINs ficam protegidos e os pagamentos são processados pelo Mercado Pago.</p></details>
     </div>
     <div className="hint" style={{textAlign:"center",marginTop:8}}>No celular: use "Adicionar à tela de início" (Safari: Compartilhar · Chrome: menu ⋮) para abrir como app.</div>
-    <div className="foot">Coordenador · uma ferramenta ConsultaIA · escalas e gestão de equipes de saúde</div>
+    <div className="foot">Coordenador · uma ferramenta ConsultaIA · escalas e gestão de equipes de saúde · v{APP_VERSION}</div>
   </div>;}
 
 function PortalOnline({onVoltar}){const [codigo,setCodigo]=useState(localStorage.getItem("coord_codigo")||"");const [setor,setSetor]=useState(null);const [prof,setProf]=useState("");const [pin,setPin]=useState("");
@@ -645,7 +647,7 @@ function App(){
       sb.from("assinaturas").select("limite_equipes,status,vigente_ate").eq("user_id",user.id).order("atualizado_em",{ascending:false}).limit(1).maybeSingle()]);
     const meuLocal=loadLocal(user.id);
     if(e.data&&e.data.dados){const merged=mergeEstados(meuLocal,e.data.dados);setS(s=>({...merged,plano:s.plano}));}
-    else{const base=meuLocal||estadoInicial();setS(s=>({...base,plano:s.plano}));
+    else{const base=estadoInicial();setS(s=>({...base,plano:s.plano}));
       const ts=new Date().toISOString();await sb.from("estados").upsert({user_id:user.id,dados:{...base,_ts:ts},atualizado_em:ts});}
     if(a.data)setS(s=>({...s,plano:{limite:a.data.limite_equipes||1,status:a.data.status||"expirado",vigenteAte:a.data.vigente_ate}}));
     cloudLoaded.current=true;await carregarSols();})();},[user]);
@@ -995,7 +997,7 @@ ${t.outerHTML}
 
       <div className="topbar">
         <div className="logo-wrap noprint"><div className="logo-slot" onClick={()=>document.getElementById("logoInput").click()} title={S.org.logo?"Trocar logo":"Enviar logo"}>{S.org.logo?<img src={S.org.logo} alt="logo"/>:<span>+ logo</span>}</div>{S.org.logo&&<button className="logo-x" title="Remover logo" onClick={e=>{e.stopPropagation();if(confirm("Remover a logo?"))upd(x=>({...x,org:{...x.org,logo:null}}));}}>×</button>}</div>
-        <div className="brand"><input className="unit" value={S.org.nome} onChange={e=>upd(s=>({...s,org:{...s.org,nome:e.target.value}}))}/><div className="title">Coordenador · {eq.nome} · {MESES[mes]}/{ano}</div></div>
+        <div className="brand"><input className="unit" value={S.org.nome} onChange={e=>upd(s=>({...s,org:{...s.org,nome:e.target.value}}))}/><div className="title">Coordenador · {eq.nome} · {MESES[mes]}/{ano} <span style={{opacity:.6}}>· v{APP_VERSION}</span></div></div>
         <div className="noprint">{badge}</div>
         <div className="actions noprint">
           <BtnCap cap={online?"o que a equipe vê no celular":"tela do profissional (PIN)"}><button className="btn" onClick={()=>setModo(online?"portal_online":"portal")}>👤 Portal</button></BtnCap>
