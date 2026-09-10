@@ -827,6 +827,12 @@ function App(){
 
       <div className="nav noprint">{NAV.map(([k,l,b])=><button key={k} className={secao===k?"on":""} onClick={()=>setSecao(k)}>{l}{b>0&&<span className="b">{b}</span>}</button>)}</div>
 
+      {!S.onboarded&&<div className="panel" data-sec="panorama" style={{borderColor:"var(--teal)",background:"#f6fbfb"}}><h2>👋 Primeiros passos — dê nome às coisas</h2>
+        <div className="row">
+          <div className="field" style={{flex:1,minWidth:220}}><label>Nome da unidade / hospital</label><input style={{width:"100%"}} value={S.org.nome} onChange={e=>upd(x=>({...x,org:{...x.org,nome:e.target.value}}))} placeholder="ex.: Hospital Naval de Salvador"/></div>
+          <div className="field" style={{flex:1,minWidth:220}}><label>Nome deste setor (equipe)</label><input style={{width:"100%"}} value={eq.nome} onChange={e=>updEq(x=>({...x,nome:e.target.value}))} placeholder="ex.: UTI Adulto, Clínica Médica, Recepção"/></div>
+          <BtnCap cap="depois é só usar"><button className="btn primary" onClick={()=>upd(x=>({...x,onboarded:true}))}>Concluir</button></BtnCap></div>
+        <div className="hint">Você pode renomear a qualquer hora pelo ✏️ ao lado do setor. Cada setor tem escala própria; crie outros em "Criar outro setor".</div></div>}
       <div className="panel" data-sec="panorama"><h2>Panorama · {eq.nome} · {MESES[mes]}/{ano}</h2>
         <div className="kpis">
           <div className="kpi" onClick={()=>setSecao("equipe")}><div className="k">Profissionais</div><div className="v">{eq.profs.length}</div><div className="s">{eq.funcoes.map(f=>eq.profs.filter(p=>p.funcaoId===f.id).length+" "+f.nome.toLowerCase()).join(" · ")||"cadastre a equipe"}</div></div>
@@ -842,8 +848,10 @@ function App(){
       <div className="tabs noprint">
         <span className="hint" style={{marginTop:0}}>Setores:</span>
         {S.equipes.map(e=><button key={e.id} className={"tab"+(e.id===S.ativa?" on":"")} onClick={()=>upd(s=>({...s,ativa:e.id}))} onDoubleClick={()=>{const n=prompt("Nome do setor:",e.nome);if(n&&n.trim())upd(s=>({...s,equipes:s.equipes.map(x=>x.id===e.id?{...x,nome:n.trim()}:x)}));}} title="Duplo clique para renomear">{e.nome}</button>)}
-        <input value={newEq} placeholder="Novo setor (ex.: UTI Adulto)" onChange={e=>setNewEq(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addEquipe()} style={{border:"1px solid var(--line)",borderRadius:999,padding:"7px 12px",fontSize:13}}/>
-        <button className="btn sm" onClick={addEquipe}>+ setor</button>
+        <BtnCap cap="renomear setor"><button className="btn sm" onClick={()=>{const n=prompt("Novo nome do setor:",eq.nome);if(n&&n.trim())updEq(x=>({...x,nome:n.trim()}));}}>✏️</button></BtnCap>
+        <span style={{width:1,height:26,background:"var(--line)",margin:"0 4px"}}></span>
+        <input value={newEq} placeholder="Criar outro setor (ex.: UTI Adulto)" onChange={e=>setNewEq(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addEquipe()} style={{border:"1px solid var(--line)",borderRadius:999,padding:"7px 12px",fontSize:13}}/>
+        <BtnCap cap="cada setor tem escala própria"><button className="btn sm" onClick={addEquipe}>+ criar setor</button></BtnCap>
         {S.equipes.length>1&&<button className="btn ghost sm" onClick={()=>rmEquipe(eq.id)}>remover atual</button>}
         <span className="hint" style={{marginTop:0,marginLeft:"auto"}}>{S.equipes.length}/{S.plano.limite} escala(s) no plano</span>
       </div>
