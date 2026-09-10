@@ -233,7 +233,20 @@ const loadLocal=()=>{try{const r=localStorage.getItem(KEY);return r?JSON.parse(r
 const saveLocal=s=>{try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}};
 let _t=null;
 function persistCloud(user,s){if(!sb||!user)return;clearTimeout(_t);
-  _t=setTimeout(()=>sb.from("estados").upsert({user_id:user.id,dados:s,atualizado_em:new Date().toISOString()}).then(()=>{}),900);}
+  _t=setTimeout(()=>{const ts=new Date().toISOString();sb.from("estados").upsert({user_id:user.id,dados:{...s,_ts:ts},atualizado_em:ts}).then(()=>{});},900);}
+// merge seguro: nunca deixa o vazio apagar o cheio; combina equipes por id e meses do sched
+function mergeEstados(local,nuvem){
+  if(!nuvem)return local;if(!local)return nuvem;
+  const lt=Date.parse(local._ts||0)||0, nt=Date.parse(nuvem._ts||0)||0;
+  const base=nt>=lt?nuvem:local, outro=nt>=lt?local:nuvem; // o mais novo manda
+  const eqById={}; (base.equipes||[]).forEach(e=>eqById[e.id]=JSON.parse(JSON.stringify(e)));
+  (outro.equipes||[]).forEach(e=>{const b=eqById[e.id];if(!b){eqById[e.id]=e;return;}
+    // preserva meses de escala que existam em qualquer um dos lados
+    b.sched=b.sched||{};e.sched=e.sched||{};for(const k in e.sched)if(!b.sched[k])b.sched[k]=e.sched[k];
+    b.original=b.original||{};e.original=e.original||{};for(const k in e.original)if(!b.original[k])b.original[k]=e.original[k];
+  });
+  return {...base,equipes:Object.values(eqById)};
+}
 
 // ---------- motor ----------
 const abateAlvo=code=>!!code&&code!=="F";  // toda licença (menos Folga) reduz o alvo — não gera carga negativa
@@ -612,9 +625,9 @@ function App(){
   useEffect(()=>{if(!sb||!user||cloudLoaded.current)return;(async()=>{
     const [e,a]=await Promise.all([sb.from("estados").select("dados").eq("user_id",user.id).maybeSingle(),
       sb.from("assinaturas").select("limite_equipes,status,vigente_ate").eq("user_id",user.id).order("atualizado_em",{ascending:false}).limit(1).maybeSingle()]);
-    if(e.data&&e.data.dados)setS(s=>({...e.data.dados,plano:s.plano}));
+    if(e.data&&e.data.dados){const merged=mergeEstados(loadLocal(),e.data.dados);setS(s=>({...merged,plano:s.plano}));}
     if(a.data)setS(s=>({...s,plano:{limite:a.data.limite_equipes||1,status:a.data.status||"expirado",vigenteAte:a.data.vigente_ate}}));
-    if(!e.data)await sb.from("estados").upsert({user_id:user.id,dados:S,atualizado_em:new Date().toISOString()});
+    if(!e.data){const l=loadLocal();if(l&&(l.equipes||[]).some(eq=>Object.keys(eq.sched||{}).length))await sb.from("estados").upsert({user_id:user.id,dados:{...l,_ts:new Date().toISOString()},atualizado_em:new Date().toISOString()});}
     cloudLoaded.current=true;await carregarSols();})();},[user]);
   async function carregarSols(){if(!sb||!user)return;const {data}=await sb.from("solicitacoes").select("*").eq("user_id",user.id).order("criado_em",{ascending:false}).limit(500);
     if(data)setCloudSols(data.map(r=>({id:r.id,equipe_id:r.equipe_id,ym:r.ym,de:r.de,para:r.para,diaDe:r.dia_de,diaPara:r.dia_para,status:r.status,comentario:r.comentario||"",lidoPor:r.lido_por||[],criadoEm:r.criado_em?new Date(r.criado_em).toLocaleDateString("pt-BR"):"",aceitoEm:r.aceito_em?new Date(r.aceito_em).toLocaleDateString("pt-BR"):"",decididoEm:r.decidido_em?new Date(r.decidido_em).toLocaleDateString("pt-BR"):""})));}
