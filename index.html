@@ -163,7 +163,9 @@ tfoot tr.sum td{background:#e9f1f1;color:var(--ink);font-size:12px}tfoot tr.sum 
 body.printing > *:not(#root){display:none!important}
 body.printing #root > *:not(.wrap){display:none!important}
 body.printing .noprint,body.printing .btn,body.printing .bcap{display:none!important}
-body.printing .wrap > *:not(.print-show){display:none!important}
+/* esconde tudo em qualquer profundidade; reexibe só o que tem .print-show e os ancestrais deles (marcados via JS com .print-keep) */
+body.printing .wrap *:not(.print-show):not(.print-keep):not(.print-show *){display:none!important}
+body.printing .print-keep{display:block!important}
 body.printing .wrap{max-width:none;padding:0;margin:0}
 body.printing .print-head{display:flex!important;align-items:center;gap:14px;margin:0 0 6px}
 body.printing .print-head img{height:42px;max-width:110px;object-fit:contain}
@@ -551,8 +553,11 @@ function PortalOnline({onVoltar}){const [codigo,setCodigo]=useState(localStorage
     {aviso&&aviso.texto&&<div className="panel" style={{borderColor:"var(--teal)"}}><h2>📣 Comunicado da coordenação{aviso.em?" · "+aviso.em:""}</h2><div style={{whiteSpace:"pre-wrap",fontSize:14}}>{aviso.texto}</div></div>}
     {avisos.length>0&&<div className="panel" style={{borderColor:"var(--teal)"}}><h2>🔔 Avisos</h2>{avisos.map(x=><div key={x.id} className="group" style={{marginBottom:8}}><div style={{fontSize:13}}>Troca: <b>{x.de===eu.id?"você":nm(x.de)}</b> dia {x.diaDe} ↔ <b>{x.para===eu.id?"você":nm(x.para)}</b> dia {x.diaPara} — <b style={{color:x.status==="autorizada"?"var(--ok)":"var(--bad)"}}>{ST[x.status]}</b>{x.decididoEm?" em "+x.decididoEm:""}</div>{x.comentario&&<div className="hint">💬 {x.comentario}</div>}<button className="btn sm" style={{marginTop:6}} onClick={()=>lido(x.id)}>OK, li</button></div>)}</div>}
     <div className="panel"><h2><button className="navbtn" onClick={()=>mudarMes(-1)}>‹</button><span className="mlabel" style={{minWidth:130}}>{MESES[mes]} {ano}</span><button className="navbtn" onClick={()=>mudarMes(1)}>›</button><span className="sp"></span>{me.original&&<span className="hint" style={{marginTop:0}}>publicada em {me.original}</span>}</h2>
-      <div className="grid-scroll"><table className="sched"><thead><tr>{Array.from({length:dim},(_,i)=>i+1).map(d=><th key={d} className={holidays.includes(d)?"hol":isWknd(ano,mes,d)?"wknd":""}><div className="dwd">{WD[wdOf(ano,mes,d)]}</div><div className="dnum">{d}</div></th>)}</tr></thead>
-        <tbody><tr>{Array.from({length:dim},(_,i)=>i+1).map(d=>{const v=(sched[eu.id]||{})[d]||"";return <td key={d} className={holidays.includes(d)?"hol":isWknd(ano,mes,d)?"wknd":""}><div className={"chip "+cls(v)} style={{width:"100%",borderRadius:0,height:34}}>{v||"·"}</div></td>;})}</tr></tbody></table></div>
+      <div className="grid-scroll"><table className="sched"><thead><tr><th className="name-col" style={{minWidth:120}}>Profissional</th>{Array.from({length:dim},(_,i)=>i+1).map(d=><th key={d} className={holidays.includes(d)?"hol":isWknd(ano,mes,d)?"wknd":""}><div className="dwd">{WD[wdOf(ano,mes,d)]}</div><div className="dnum">{d}</div></th>)}</tr></thead>
+        <tbody>{[eu,...profs.filter(p=>p.id!==eu.id)].map(p=>{const mine=p.id===eu.id;const f=funcoes.find(x=>x.id===p.funcaoId);
+          return <tr key={p.id} style={mine?{background:"#e6f4f4"}:{}}><td className="name-col" style={{minWidth:120,background:mine?"#e6f4f4":"#fff"}}><div className="nm-main" style={{color:mine?"var(--teal-d)":"var(--ink)"}}>{mine?"★ ":""}{p.nome}</div><div className="nm-tags">{(f?f.nome:"").toUpperCase().slice(0,14)}</div></td>
+            {Array.from({length:dim},(_,i)=>i+1).map(d=>{const v=(sched[p.id]||{})[d]||"";return <td key={d} className={holidays.includes(d)?"hol":isWknd(ano,mes,d)?"wknd":""}><div className={"chip "+cls(v)} style={{width:"100%",borderRadius:0,height:30,opacity:mine?1:.85}}>{v||"·"}</div></td>;})}</tr>;})}</tbody></table></div>
+      <div className="hint" style={{marginTop:6}}>★ sua linha. Você vê a escala de toda a equipe para escolher com quem trocar — mas só pode pedir troca dos <b>seus</b> dias.</div>
       <div className="legend" style={{marginTop:8}}>{turnos.map(t=><span key={t.code}><i className={"chip "+cls(t.code)}>{t.code}</i>{t.nome} {t.horas}h</span>)}{licencas.map(l=><span key={l.code}><i className={"chip "+cls(l.code)}>{l.code}</i>{l.nome}</span>)}</div>
       <div className="hint">Meus plantões: {diasCom(eu.id).map(d=>d+" "+sched[eu.id][d]).join(", ")||"nenhum neste mês"} · total {diasCom(eu.id).reduce((a,d)=>a+(turnoMap[sched[eu.id][d]]||{}).horas||0,0)}h</div></div>
     {me.liberado&&<div className="panel"><h2>Pedir troca de plantão</h2>
@@ -1206,7 +1211,8 @@ function App(){
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
-window.addEventListener("beforeprint",()=>document.body.classList.add("printing"));window.addEventListener("afterprint",()=>document.body.classList.remove("printing"));
+window.addEventListener("beforeprint",()=>{document.querySelectorAll(".print-show").forEach(el=>{let a=el.parentElement;while(a&&!a.classList.contains("wrap")){a.classList.add("print-keep");a=a.parentElement;}});document.body.classList.add("printing");});
+window.addEventListener("afterprint",()=>{document.body.classList.remove("printing");document.querySelectorAll(".print-keep").forEach(el=>el.classList.remove("print-keep"));});
 </script>
 </body>
 </html>
