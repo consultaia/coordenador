@@ -157,6 +157,16 @@ tfoot tr.sum td{background:#e9f1f1;color:var(--ink);font-size:12px}tfoot tr.sum 
 .overlay{position:fixed;inset:0;background:rgba(14,31,38,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
 .modal{background:#fff;border-radius:16px;padding:22px;max-width:760px;width:100%;max-height:90vh;overflow:auto}
 .print-head{display:none}
+.next-step{display:flex;justify-content:flex-end;margin-top:10px}
+.nav .step{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--teal);color:#fff;font-size:10px;font-weight:700;margin-right:2px}
+.nav button.on .step{background:#fff;color:var(--teal-d)}
+.tour-back{position:fixed;inset:0;background:rgba(14,31,38,.55);z-index:90}
+.tour-hole{position:fixed;z-index:91;border-radius:12px;box-shadow:0 0 0 4px var(--teal),0 0 0 9999px rgba(14,31,38,.55);transition:all .25s;pointer-events:none}
+.tour-pop{position:fixed;z-index:92;background:#fff;border-radius:14px;padding:16px 18px;max-width:320px;box-shadow:0 12px 40px rgba(0,0,0,.3);transition:all .25s}
+.tour-pop h4{font-family:'Space Grotesk',sans-serif;margin:0 0 6px;font-size:15px;color:var(--teal-d)}
+.tour-pop p{margin:0 0 12px;font-size:13px;color:var(--ink);line-height:1.5}
+.tour-pop .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tour-pop .dots{display:flex;gap:5px}.tour-pop .dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.tour-pop .dots i.on{background:var(--teal)}
 @media print{
   @page{size:A4 landscape;margin:6mm}
   html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -608,6 +618,21 @@ function App(){
   const [ferOpt,setFerOpt]=useState({carnaval:false,corpus:false});
   const [modo,setModo]=useState(()=>{try{return (sb&&localStorage.getItem("coord_portal_token"))?"portal_online":"coord";}catch(e){return "coord";}});const [sessao,setSessao]=useState(null);const [secao,setSecao]=useState("panorama");const [verOriginal,setVerOriginal]=useState(false);
   const [novo,setNovo]=useState({nome:"",funcaoId:"",weekly:"",pref:"misto",turnos:null,coren:"",corenVal:"",telefone:"",pin:""});
+  const [tour,setTour]=useState(-1);const [tourRect,setTourRect]=useState(null);
+  const TOUR=[
+    {sel:'[data-tour="nav"]',sec:null,tit:"Bem-vindo(a)! \u{1F44B}",txt:"Aqui em cima ficam as etapas. Siga a ordem dos números: 1 Equipe → 2 Config. → 3 Escala."},
+    {sel:'[data-tour="equipe"]',sec:"equipe",tit:"1 · Cadastre a equipe",txt:"Adicione os profissionais: nome, função, carga horária e um PIN para acessarem pelo celular."},
+    {sel:'[data-tour="setor"]',sec:"setor",tit:"2 · Configure a escala",txt:"Defina os turnos e quantos profissionais precisa por turno (a cobertura). É o que o gerador usa."},
+    {sel:'[data-tour="gerar"]',sec:"escala",tit:"3 · Gere a escala",txt:"Um clique e a escala do mês aparece pronta, respeitando descanso, cobertura e fins de semana."},
+    {sel:'[data-tour="codigo"]',sec:"equipe",tit:"Equipe no celular \u{1F4F1}",txt:"Este é o código do setor. A equipe entra no celular com o código + PIN e vê a própria escala."},
+    {sel:'[data-tour="portal"]',sec:null,tit:"Tudo pronto! \u{1F389}",txt:"Explore à vontade. Trocas, documentos e indicadores estão nas outras abas."},
+  ];
+  function posicionaTour(i){const step=TOUR[i];if(!step){setTourRect(null);return;}if(step.sec)setSecao(step.sec);
+    setTimeout(()=>{const el=document.querySelector(step.sel);if(!el){setTourRect({center:true});return;}el.scrollIntoView({behavior:"smooth",block:"center"});
+      setTimeout(()=>{const r=el.getBoundingClientRect();setTourRect({x:r.left-8,y:r.top-8,w:r.width+16,h:r.height+16,center:false});},280);},step.sec?280:0);}
+  useEffect(()=>{if(tour>=0)posicionaTour(tour);},[tour]);
+  useEffect(()=>{if(!sb)return;if(user&&cloudLoaded.current&&!S.tourVisto&&modo==="coord"){const t=setTimeout(()=>setTour(0),800);return()=>clearTimeout(t);}},[user,S.tourVisto,modo]);
+  function fecharTour(){setTour(-1);setTourRect(null);upd(x=>({...x,tourVisto:true}));}
   const cloudLoaded=useRef(false);
 
   const eq=S.equipes.find(e=>e.id===S.ativa)||S.equipes[0];
@@ -964,8 +989,17 @@ ${t.outerHTML}
     <button className="btn primary" disabled={authBusy} onClick={salvarNovaSenha}>Salvar senha</button></div></div>;
   if(sb&&modo==="portal_online")return <PortalOnline onVoltar={()=>setModo("coord")}/>;
   if(sb&&!user)return <Landing onEntrar={entrar} onCriar={criarConta} onReset={resetSenha} onPortal={()=>setModo("portal_online")} erro={authErro} info={authInfo} busy={authBusy}/>;
+  const tourStep=tour>=0?TOUR[tour]:null;
   return (
     <div className={"wrap sec-"+secao}>
+      {tourStep&&<div className="noprint"><div className="tour-back" onClick={fecharTour}></div>
+        {tourRect&&!tourRect.center&&<div className="tour-hole" style={{left:tourRect.x,top:tourRect.y,width:tourRect.w,height:tourRect.h}}></div>}
+        <div className="tour-pop" style={tourRect&&!tourRect.center?{left:Math.min(Math.max(12,tourRect.x),(typeof window!=="undefined"?window.innerWidth:1000)-332),top:(tourRect.y+tourRect.h+14>((typeof window!=="undefined"?window.innerHeight:700)-170))?Math.max(12,tourRect.y-176):tourRect.y+tourRect.h+14}:{left:"50%",top:"50%",transform:"translate(-50%,-50%)"}}>
+          <h4>{tourStep.tit}</h4><p>{tourStep.txt}</p>
+          <div className="row"><div className="dots">{TOUR.map((_,i)=><i key={i} className={i===tour?"on":""}></i>)}</div>
+            <div style={{display:"flex",gap:6}}><button className="btn ghost sm" onClick={fecharTour}>Pular</button>
+              {tour<TOUR.length-1?<button className="btn primary sm" onClick={()=>setTour(tour+1)}>Próximo</button>:<button className="btn primary sm" onClick={fecharTour}>Concluir</button>}</div></div>
+        </div></div>}
       <datalist id="dl-funcoes">{eq.funcoes.map(f=><option key={f.id} value={f.nome}/>)}</datalist>
       {modo==="portal"&&<PortalProfissional S={S} eq={eq} setEq={id=>upd(s=>({...s,ativa:id}))} sessao={sessao} onLogin={portalLogin} onLogout={()=>setSessao(null)} onSair={sairPortal}
         sched={sched} turnoMap={turnoMap} dim={dim} ano={ano} mes={mes} hol={hol} onSolicitar={solicitarTroca} onResponder={responderTroca} onLido={marcarLido}/>}
@@ -1003,20 +1037,21 @@ ${t.outerHTML}
         <div className="brand"><input className="unit" value={S.org.nome} onChange={e=>upd(s=>({...s,org:{...s.org,nome:e.target.value}}))}/><div className="title">Coordenador · {eq.nome} · {MESES[mes]}/{ano} <span style={{opacity:.6}}>· v{APP_VERSION}</span></div></div>
         <div className="noprint">{badge}</div>
         <div className="actions noprint">
-          <BtnCap cap={online?"o que a equipe vê no celular":"tela do profissional (PIN)"}><button className="btn" onClick={()=>setModo(online?"portal_online":"portal")}>👤 Portal</button></BtnCap>
+          <BtnCap cap={online?"o que a equipe vê no celular":"tela do profissional (PIN)"}><button className="btn" data-tour="portal" onClick={()=>setModo(online?"portal_online":"portal")}>👤 Portal</button></BtnCap>
           {ehAdmin&&<BtnCap cap="liberar cortesias"><button className="btn" onClick={()=>{setShowAdmin(true);carregarAdminLista();}}>🎁 Admin</button></BtnCap>}
           {online&&<BtnCap cap={user.email}><button className="btn ghost" onClick={sairConta}>Sair</button></BtnCap>}
           {!online&&<BtnCap cap={S.org.coordPinHash?"PIN do coordenador ativo":"proteger volta do portal"}><button className="btn" onClick={definirPinCoord}>{S.org.coordPinHash?"🔒":"🔓"}</button></BtnCap>}
-          <BtnCap cap="assinatura e limites"><button className="btn" onClick={()=>setShowPlanos(true)}>Planos</button></BtnCap>
+          <BtnCap cap="assinatura e limites"><button className="btn" onClick={()=>setShowPlanos(true)}>Planos</button>
+          <BtnCap cap="rever o tour de boas-vindas"><button className="btn" onClick={()=>{upd(x=>({...x,tourVisto:false}));setTour(0);}}>❔ Tour</button></BtnCap></BtnCap>
           <BtnCap cap="restaura um .json baixado em Salvar"><button className="btn" onClick={()=>document.getElementById("jsonInput").click()}>Abrir backup</button></BtnCap>
           <BtnCap cap="baixa um .json com tudo"><button className="btn" onClick={exportJSON}>Salvar backup</button></BtnCap>
           <BtnCap cap="grade em PDF/papel"><button id="btn-imprimir" className="btn" onClick={imprimirEscala}>Imprimir</button></BtnCap>
           <BtnCap cap="planilha do mês"><button className="btn" onClick={exportExcel}>Excel</button></BtnCap>
-          <BtnCap cap="preenche o mês automaticamente"><button className="btn primary" onClick={gerar}>⚡ Gerar escala</button></BtnCap>
+          <BtnCap cap="preenche o mês automaticamente"><button className="btn primary" data-tour="gerar" onClick={gerar}>⚡ Gerar escala</button></BtnCap>
         </div>
       </div>
 
-      <div className="nav noprint">{NAV.map(([k,l,b])=><button key={k} className={secao===k?"on":""} onClick={()=>setSecao(k)}>{l}{b>0&&<span className="b">{b}</span>}</button>)}</div>
+      <div className="nav noprint" data-tour="nav">{NAV.map(([k,l,b])=><button key={k} className={secao===k?"on":""} onClick={()=>setSecao(k)}>{l}{b>0&&<span className="b">{b}</span>}</button>)}</div>
 
       {!S.onboarded&&<div className="panel" data-sec="panorama" style={{borderColor:"var(--teal)",background:"#f6fbfb"}}><h2>👋 Primeiros passos — dê nome às coisas</h2>
         <div className="row">
@@ -1079,7 +1114,7 @@ ${t.outerHTML}
             <td><button className="btn ghost sm" onClick={()=>rmTurno(i)}>remover</button></td></tr>)}</tbody></table>
         <div className="hint">Com "gerador preenche" marcado, o turno aparece na cobertura e você diz quantas pessoas por dia; cobertura 0 = ninguém é escalado automaticamente (você pode colocar à mão). Desmarcado, o turno é só manual.</div></div>
 
-      <div className="panel noprint" data-sec="setor"><h2>Funções e cobertura exigida <span className="sp"></span><button className="btn sm" onClick={addFunc}>+ função</button></h2>
+      <div className="panel noprint" data-sec="setor" data-tour="setor"><h2>Funções e cobertura exigida <span className="sp"></span><button className="btn sm" onClick={addFunc}>+ função</button></h2>
         <div className="hint" style={{marginTop:0,marginBottom:10}}>Escala de uma função só? Deixe as funções que não usa com cobertura <b>0</b> em todos os turnos, ou remova a função no × ao lado do nome. O que estiver zerado não aparece na cobertura, no diagnóstico nem na impressão.</div>
         <div className="row" style={{alignItems:"flex-start"}}>
           <div style={{minWidth:220}}>{eq.funcoes.map((f,i)=><div key={f.id} style={{display:"flex",gap:6,marginBottom:6}}><input value={f.nome} onChange={e=>updFunc(i,e.target.value)} style={{flex:1,border:"1px solid var(--line)",borderRadius:7,padding:"5px 8px"}}/><button className="btn ghost sm" onClick={()=>rmFunc(i)}>×</button></div>)}</div>
@@ -1090,6 +1125,7 @@ ${t.outerHTML}
         </div></div>
 
       <div data-sec="setor"><PainelDimensionamento eq={eq} onChange={updDim} onAplicar={aplicarDimensionamento}/></div>
+      <div className="next-step noprint" data-sec="setor"><BtnCap cap="gerar e ajustar a escala do mês"><button className="btn primary" onClick={()=>setSecao("escala")}>Próximo: Gerar a escala →</button></BtnCap></div>
 
       <div className="panel noprint" data-sec="setor"><h2>Tipos de licença / afastamento <span className="sp"></span><button className="btn sm" onClick={addLic}>+ tipo</button></h2>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:6}}>
@@ -1098,7 +1134,7 @@ ${t.outerHTML}
             <button className="btn ghost sm" onClick={()=>rmLic(i)} disabled={l.code==="F"}>×</button></div>)}</div></div>
 
       <div className="panel noprint" data-sec="equipe"><h2>Acesso da equipe pelo celular</h2>
-        <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}><span>Código do setor <b>{eq.nome}</b>:</span><span className="codigo">{eq.codigo}</span>
+        <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}><span>Código do setor <b>{eq.nome}</b>:</span><span className="codigo" data-tour="codigo">{eq.codigo}</span>
           <button className="btn sm" onClick={()=>{navigator.clipboard&&navigator.clipboard.writeText(eq.codigo);}}>copiar</button>
           <span className="hint" style={{marginTop:0}}>só letras e números, sem O, 0, I, L ou 1 — não há como confundir</span>
           <button className="btn ghost sm" onClick={()=>{if(confirm("Gerar um novo código? O antigo deixa de funcionar."))updEq(x=>({...x,codigo:genCodigo(x.nome)}));}}>gerar novo</button>
@@ -1112,7 +1148,7 @@ ${t.outerHTML}
         <textarea value={(eq.aviso||{}).texto||""} placeholder="Ex.: Escala de outubro publicada. Pedidos de troca até dia 25. Reunião de equipe dia 30 às 14h." onChange={e=>updEq(x=>({...x,aviso:{texto:e.target.value,em:new Date().toLocaleDateString("pt-BR")}}))} style={{width:"100%",minHeight:70,border:"1px solid var(--line)",borderRadius:8,padding:"8px 10px",font:"inherit"}}/>
         <div className="hint">Aparece para todos deste setor ao entrarem no portal{(eq.aviso||{}).em?" · atualizado em "+eq.aviso.em:""}. É o canal de comunicação: avisos, decisões de troca e a escala ficam lá.</div></div>
 
-      <div className="panel noprint" data-sec="equipe"><h2>Profissionais do setor <span className="sp"></span><button className="btn sm" onClick={agruparPorFuncao} title="Reordena juntando quem tem a mesma função">Agrupar por função</button></h2>
+      <div className="panel noprint" data-sec="equipe" data-tour="equipe"><h2>Profissionais do setor <span className="sp"></span><button className="btn sm" onClick={agruparPorFuncao} title="Reordena juntando quem tem a mesma função">Agrupar por função</button></h2>
         {eq.profs.length===0?<div className="empty" style={{padding:"8px 0"}}>Nenhum profissional cadastrado — preencha o formulário abaixo.</div>:
         <table className="tb"><thead><tr><th style={{width:60}}>Ordem</th><th>Nome</th><th>Função <small style={{textTransform:"none",fontWeight:400}}>(digite qualquer profissão)</small></th><th>Carga semanal</th><th>Preferência · turnos permitidos</th><th>Alvo mensal</th><th></th></tr></thead><tbody>
           {eq.profs.map((p,i)=><tr key={p.id}>
@@ -1183,6 +1219,7 @@ ${t.outerHTML}
         <div className="hint">Afastamentos e turnos manuais são preservados ao clicar em “Gerar escala”. Para fixar um SD/SN específico, <b>clique com o botão direito</b> na célula (fica com borda verde) — o gerador não mexe nele.</div></div>
 
       <div data-sec="equipe"><PainelFerias eq={eq} ano={ano} onAdd={addFer} onUpd={updFer} onRm={rmFer} onAplicar={aplicarFerias}/></div>
+      <div className="next-step noprint" data-sec="equipe"><BtnCap cap="ir para turnos, funções e cobertura"><button className="btn primary" onClick={()=>setSecao("setor")}>Próximo: Config. da escala →</button></BtnCap></div>
 
       <div className="grid-scroll">
         {eq.profs.length===0?<div className="empty">Cadastre a equipe e clique em “Gerar escala”.</div>:
