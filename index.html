@@ -870,11 +870,14 @@ function App(){
       const wo=XLSX.utils.aoa_to_sheet(ao);wo["!cols"]=[{wch:22},...Array(dim).fill({wch:4})];XLSX.utils.book_append_sheet(wb,wo,"Original");}
     XLSX.writeFile(wb,"escala-"+eq.nome.toLowerCase().replace(/\s+/g,"-")+"-"+MESES[mes].toLowerCase()+"-"+ano+".xlsx");}
   function imprimirEscala(){
-    const srcTable=document.querySelector(".grid-scroll table.sched");
+    const srcTable=document.querySelector('.grid-scroll[data-sec="escala"] table.sched')||document.querySelector(".grid-scroll table.sched");
     if(!srcTable||eq.profs.length===0){alert("Gere a escala antes de imprimir.");return;}
+    // lê o valor selecionado de cada célula ORIGINAL (o clone perde o estado do <select>)
+    const vals=[...srcTable.querySelectorAll("tbody select.cell-sel")].map(sel=>sel.value||"");
     const t=srcTable.cloneNode(true);
-    // células: troca <select> pelo texto, remove controles
-    t.querySelectorAll("select.cell-sel").forEach(sel=>{const d=document.createElement("div");d.className="cp "+(sel.className.replace("cell-sel","").trim());d.textContent=sel.value||"·";sel.replaceWith(d);});
+    let vi=0;t.querySelectorAll("tbody select.cell-sel").forEach(sel=>{const v=vals[vi++]||"";const d=document.createElement("div");d.className="cp "+cellClass(v);d.textContent=v||"·";sel.replaceWith(d);});
+    // qualquer outro select que reste (não deveria) vira texto
+    t.querySelectorAll("select").forEach(sel=>{const d=document.createElement("div");d.className="cp";d.textContent=(sel.options[sel.selectedIndex]||{}).text||"";sel.replaceWith(d);});
     t.querySelectorAll(".cell-print,.noprint,.bcap,button,tfoot").forEach(el=>el.remove()); // sem linhas de contagem: só a escalação
     t.querySelectorAll(".print-coren").forEach(el=>{el.style.display="table-cell";});
     const cls=code=>{const tt=turnoMap[code];if(tt)return tt.periodo==="noite"?"k-noite":(tt.horas>=12?"k-dia":"k-curto");return code==="F"?"k-F":code==="FE"?"k-FE":code?"k-lic":"";};
