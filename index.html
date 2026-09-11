@@ -375,7 +375,7 @@ function PortalProfissional({S,eq,setEq,sessao,onLogin,onLogout,sched,turnoMap,d
     {!me?<div className="panel" style={{maxWidth:520}}><h2>Entrar</h2>
       <div className="row"><div className="field"><label>Setor</label><select value={eq.id} onChange={e=>{setEq(e.target.value);setProf("");}}>{S.equipes.map(e=><option key={e.id} value={e.id}>{e.nome}</option>)}</select></div>
         <div className="field"><label>Seu nome</label><select value={prof} onChange={e=>setProf(e.target.value)} style={{minWidth:180}}><option value="">—</option>{eq.profs.map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}</select></div>
-        <div className="field"><label>PIN (4 dígitos)</label><input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,4))} onKeyDown={e=>e.key==="Enter"&&onLogin(prof,pin,setErro)} style={{width:80,letterSpacing:6,textAlign:"center"}}/></div>
+        <div className="field"><label>PIN (4 dígitos)</label><input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,4))} onKeyDown={e=>e.key==="Enter"&&onLogin(prof,pin,setErro)} style={{width:150,letterSpacing:"0.5em",paddingLeft:"0.5em",textAlign:"center",fontSize:22,fontFamily:"'JetBrains Mono',monospace"}}/></div>
         <button className="btn primary" disabled={!prof||pin.length!==4} onClick={()=>onLogin(prof,pin,setErro)}>Entrar</button></div>
       {erro&&<div className="hint" style={{color:"var(--bad)"}}>{erro}</div>}
       <div className="hint">Seu PIN é definido pelo coordenador no seu cadastro. Não compartilhe.</div></div>
@@ -542,7 +542,7 @@ function PortalOnline({onVoltar}){const [codigo,setCodigo]=useState(localStorage
           <button className="btn primary" disabled={busy||!codigo.trim()} onClick={buscarSetor}>Continuar</button></>
       :<><div className="hint" style={{marginTop:0}}>{setor.org} · <b>{setor.setor}</b> <button className="btn ghost sm" onClick={()=>setSetor(null)}>trocar</button></div>
           <div className="field" style={{marginTop:8}}><label>Seu nome</label><select value={prof} onChange={e=>setProf(e.target.value)} style={{width:"100%",padding:11,fontSize:15,border:"1px solid var(--line)",borderRadius:9,marginBottom:8}}><option value="">—</option>{setor.profs.map(p=><option key={p.id} value={p.id}>{p.nome}{p.temPin?"":" (sem PIN)"}</option>)}</select></div>
-          <div className="field"><label>PIN (4 dígitos)</label><input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,4))} onKeyDown={e=>e.key==="Enter"&&entrar()} style={{letterSpacing:8,textAlign:"center",fontSize:20}}/></div>
+          <div className="field"><label>PIN (4 dígitos)</label><input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,4))} onKeyDown={e=>e.key==="Enter"&&entrar()} style={{width:"100%",maxWidth:200,letterSpacing:"0.6em",paddingLeft:"0.6em",textAlign:"center",fontSize:26,fontFamily:"'JetBrains Mono',monospace",padding:"12px 10px"}}/></div>
           <button className="btn primary" disabled={busy||!prof||pin.length!==4} onClick={entrar}>Entrar</button></>}
       {erro&&<div className="hint" style={{color:"var(--bad)"}}>{erro}</div>}
       <div style={{marginTop:14}}><button className="btn ghost sm" onClick={onVoltar}>← Sou coordenador</button></div></div></div>;
@@ -1159,7 +1159,7 @@ ${t.outerHTML}
             <div className="field"><label>Registro no conselho</label><input style={{width:"100%"}} placeholder="COREN-BA 123456" value={novo.coren} onChange={e=>setNovo({...novo,coren:e.target.value})}/></div>
             <div className="field"><label>Validade da carteira</label><input type="date" style={{width:"100%"}} value={novo.corenVal} onChange={e=>setNovo({...novo,corenVal:e.target.value})}/></div>
             <div className="field"><label>Telefone de contato</label><input style={{width:"100%"}} placeholder="(71) 9 9999-0000" value={novo.telefone} onChange={e=>setNovo({...novo,telefone:e.target.value})}/></div>
-            <div className="field"><label>PIN do portal (4 dígitos)</label><input inputMode="numeric" maxLength={4} style={{width:"100%",letterSpacing:4,textAlign:"center"}} value={novo.pin} onChange={e=>setNovo({...novo,pin:e.target.value.replace(/\D/g,"").slice(0,4)})}/></div>
+            <div className="field"><label>PIN do portal (4 dígitos)</label><input inputMode="numeric" maxLength={4} style={{width:"100%",letterSpacing:"0.4em",paddingLeft:"0.4em",textAlign:"center",fontSize:18,fontFamily:"'JetBrains Mono',monospace"}} value={novo.pin} onChange={e=>setNovo({...novo,pin:e.target.value.replace(/\D/g,"").slice(0,4)})}/></div>
           </div>
           <div style={{display:"flex",gap:10,alignItems:"center",marginTop:10}}><button className="btn primary" disabled={!novo.nome.trim()} onClick={addProfCompleto}>Adicionar profissional</button><span className="hint" style={{marginTop:0}}>Ao adicionar, o cadastro completo da pessoa abre logo acima (nada consta, ASO, admissão, vínculo, certificações).</span></div></div></div>
 
