@@ -548,7 +548,7 @@ function PortalOnline({onVoltar}){const [codigo,setCodigo]=useState(localStorage
   const lido=async(id)=>{try{await api("/portal/lido",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,id})});await carregar(token,ym);}catch(e){setErro(e.message);}};
   if(!WORKER_URL)return <div className="land"><div className="panel"><h2>Portal indisponível</h2><div className="hint">O endereço do Worker não está configurado neste app.</div><button className="btn" onClick={onVoltar}>← Voltar</button></div></div>;
   if(!me)return <div className="land"><div className="panel auth" style={{maxWidth:460,margin:"0 auto"}}><h2>Portal do profissional</h2>
-      {!setor?<><div className="field"><label>Código do setor (peça ao coordenador)</label><input placeholder="ex.: UTI-7K3P" value={codigo} onChange={e=>setCodigo(e.target.value.toUpperCase())} onKeyDown={e=>e.key==="Enter"&&buscarSetor()} style={{textTransform:"uppercase",letterSpacing:2}}/></div>
+      {!setor?<><div className="field"><label>Código do setor (peça ao coordenador)</label><input placeholder="ex.: UTI-7K3P" value={codigo} onChange={e=>setCodigo(e.target.value.toUpperCase())} onKeyDown={e=>e.key==="Enter"&&buscarSetor()} style={{width:"100%",maxWidth:260,textTransform:"uppercase",letterSpacing:"0.25em",fontSize:20,fontFamily:"'JetBrains Mono',monospace",padding:"11px 12px"}}/></div>
           <button className="btn primary" disabled={busy||!codigo.trim()} onClick={buscarSetor}>Continuar</button></>
       :<><div className="hint" style={{marginTop:0}}>{setor.org} · <b>{setor.setor}</b> <button className="btn ghost sm" onClick={()=>setSetor(null)}>trocar</button></div>
           <div className="field" style={{marginTop:8}}><label>Seu nome</label><select value={prof} onChange={e=>setProf(e.target.value)} style={{width:"100%",padding:11,fontSize:15,border:"1px solid var(--line)",borderRadius:9,marginBottom:8}}><option value="">—</option>{setor.profs.map(p=><option key={p.id} value={p.id}>{p.nome}{p.temPin?"":" (sem PIN)"}</option>)}</select></div>
@@ -980,7 +980,7 @@ ${t.outerHTML}
 
   const pendTrocas=solsDe(eq.id,ym).filter(x=>x.status==="aguardando_coordenador").length;
   const diasDescobertos=eq.profs.length?days.filter(d=>autoTurnos.some(t=>eq.funcoes.some(f=>((coverage[d][t.code]||{})[f.id]||0)<req(d,t.code,f.id)))).length:0;
-  const NAV=[["panorama","🏠 Panorama",0],["escala","📅 Escala",diasDescobertos],["trocas","🔁 Trocas",pendTrocas],["equipe","👥 Equipe",0],["setor","⚙️ Config. da escala",0],["docs","📄 Documentos",vencimentos.length],["indic","📊 Indicadores",0]];
+  const NAV=[["panorama","🏠 Panorama",0,null],["equipe","👥 Equipe",0,"1"],["setor","⚙️ Config. da escala",0,"2"],["escala","📅 Escala",diasDescobertos,"3"],["trocas","🔁 Trocas",pendTrocas,null],["docs","📄 Documentos",vencimentos.length,null],["indic","📊 Indicadores",0,null]];
   if(sb&&!authPronto)return <div className="land"><div className="empty">Carregando…</div></div>;
   if(sb&&recovery)return <div className="land"><div className="panel auth" style={{maxWidth:460,margin:"40px auto"}}><h2>Definir nova senha</h2>
     <div className="hint" style={{marginTop:0}}>Você entrou pelo link do e-mail. Escolha uma senha e <b>anote</b> — é ela que você usará para entrar depois, em qualquer celular ou computador.</div>
@@ -1051,7 +1051,7 @@ ${t.outerHTML}
         </div>
       </div>
 
-      <div className="nav noprint" data-tour="nav">{NAV.map(([k,l,b])=><button key={k} className={secao===k?"on":""} onClick={()=>setSecao(k)}>{l}{b>0&&<span className="b">{b}</span>}</button>)}</div>
+      <div className="nav noprint" data-tour="nav">{NAV.map(([k,l,b,step])=><button key={k} className={secao===k?"on":""} onClick={()=>setSecao(k)}>{step&&<span className="step">{step}</span>}{l}{b>0&&<span className="b">{b}</span>}</button>)}</div>
 
       {!S.onboarded&&<div className="panel" data-sec="panorama" style={{borderColor:"var(--teal)",background:"#f6fbfb"}}><h2>👋 Primeiros passos — dê nome às coisas</h2>
         <div className="row">
